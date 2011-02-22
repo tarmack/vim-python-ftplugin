@@ -37,12 +37,12 @@ make sure your Python syntax file uses a match rather than a keyword statement
 for the def and class keywords.
 
 Change the line to say something like:
-    syn match  [group]  "\%(def\|class\)" [options]
+    syn match  [group]  "\<\%(def\|class\)\>" [options]
 
 I can recommend you [Dmitry Vasiliev's](http://www.vim.org/scripts/script.php?script_id=790)
 adaptation of the default Python syntax file.
 In this file you will need to replace the following line:
     syn keyword  pythonStatement  def class nextgroup=pythonFunction skipwhite
 with:
-    syn match  pythonStatement  "\%(def\|class\)" nextgroup=pythonFunction skipwhite
+    syn match  pythonStatement  "\<\%(def\|class\)\>" nextgroup=pythonFunction skipwhite
 
