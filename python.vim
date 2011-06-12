@@ -104,7 +104,7 @@ if exists("python_docstring_in_foldtext") && python_docstring_in_foldtext
 endif
 
 " Create variables for Python syntax check. {{{1
-if !exists('python_check_syntax') && python_check_syntax
+if exists('python_check_syntax') && python_check_syntax
     if !exists('python_makeprg') && !exists('python_error_format')
         if executable('pyflakes')
             " let python_makeprg = 'pyflakes "%:p" | grep -v "unable to detect undefined names"'
