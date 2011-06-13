@@ -108,65 +108,65 @@ endif
 
 " Create variables for Python syntax check. {{{1
 if exists('python_check_syntax') && python_check_syntax
-    if !exists('python_makeprg') && !exists('python_error_format')
-        if executable('pyflakes')
-            " let python_makeprg = 'pyflakes "%:p" | grep -v "unable to detect undefined names"'
-            let python_makeprg = 'pyflakes "%:p"'
-            let python_error_format = '%A%f:%l: %m,%C%s,%Z%p^,%f:%l: %m'
-        else
-            let python_makeprg = 'python -c "import py_compile,sys; sys.stderr = sys.stdout; py_compile.compile(r''%'')"'
-            let python_error_format = "SyntaxError: ('%m'\\, ('%f'\\, %l\\, %c\\, '%s'))"
-        endif
-    endif
-
-    " Enable plug-in for current buffer without reloading? {{{1
-    " Enable automatic command to check for syntax errors when saving buffers.
-    augroup PluginFileTypePython
-        autocmd! BufWritePost <buffer> call s:SyntaxCheck()
-    augroup END
-
-
-    " Finish loading the plug-in when it's already loaded.
-    if exists('loaded_python_ftplugin')
-        finish
+  if !exists('python_makeprg') && !exists('python_error_format')
+    if executable('pyflakes')
+      " let python_makeprg = 'pyflakes "%:p" | grep -v "unable to detect undefined names"'
+      let python_makeprg = 'pyflakes "%:p"'
+      let python_error_format = '%A%f:%l: %m,%C%s,%Z%p^,%f:%l: %m'
     else
-        let loaded_python_ftplugin = 1
+      let python_makeprg = 'python -c "import py_compile,sys; sys.stderr = sys.stdout; py_compile.compile(r''%'')"'
+      let python_error_format = "SyntaxError: ('%m'\\, ('%f'\\, %l\\, %c\\, '%s'))"
     endif
+  endif
 
-    " Check for syntax errors when saving buffers. {{{1
+  " Enable plug-in for current buffer without reloading? {{{1
+  " Enable automatic command to check for syntax errors when saving buffers.
+  augroup PluginFileTypePython
+    autocmd! BufWritePost <buffer> call s:SyntaxCheck()
+  augroup END
 
-    function s:SyntaxCheck()
-        if exists('g:python_check_syntax') && g:python_check_syntax
-            if exists('g:python_makeprg') && exists('g:python_error_format')
-                let progname = matchstr(g:python_makeprg, '^\w\+')
-                if !executable(progname)
-                    let message = "Python file type plug-in: The configured syntax checker"
-                    let message .= " doesn't seem to be available! I'm disabling"
-                    let message .= " automatic syntax checking for Python scripts."
-                    let g:python_check_syntax = 0
-                    echoerr message
-                else
-                    let mp_save = &makeprg
-                    let efm_save = &errorformat
-                    try
-                        let &makeprg = g:python_makeprg
-                        let &errorformat = g:python_error_format
-                        let winnr = winnr()
-                        redraw
-                        echo 'Checking Python script syntax ..'
-                        execute 'silent make!'
-                        redraw
-                        echo ''
-                        cwindow
-                        execute winnr . 'wincmd w'
-                    finally
-                        let &makeprg = mp_save
-                        let &errorformat = efm_save
-                    endtry
-                endif
-            endif
+
+  " Finish loading the plug-in when it's already loaded.
+  if exists('loaded_python_ftplugin')
+    finish
+  else
+    let loaded_python_ftplugin = 1
+  endif
+
+  " Check for syntax errors when saving buffers. {{{1
+
+  function s:SyntaxCheck()
+    if exists('g:python_check_syntax') && g:python_check_syntax
+      if exists('g:python_makeprg') && exists('g:python_error_format')
+        let progname = matchstr(g:python_makeprg, '^\w\+')
+        if !executable(progname)
+          let message = "Python file type plug-in: The configured syntax checker"
+          let message .= " doesn't seem to be available! I'm disabling"
+          let message .= " automatic syntax checking for Python scripts."
+          let g:python_check_syntax = 0
+          echoerr message
+        else
+          let mp_save = &makeprg
+          let efm_save = &errorformat
+          try
+            let &makeprg = g:python_makeprg
+            let &errorformat = g:python_error_format
+            let winnr = winnr()
+            redraw
+            echo 'Checking Python script syntax ..'
+            execute 'silent make!'
+            redraw
+            echo ''
+            cwindow
+            execute winnr . 'wincmd w'
+          finally
+            let &makeprg = mp_save
+            let &errorformat = efm_save
+          endtry
         endif
-    endfunction
+      endif
+    endif
+  endfunction
 endif
 
 " Load custom auto indent code. {{{1
