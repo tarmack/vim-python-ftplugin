@@ -37,7 +37,7 @@ if !exists("python_docstring_in_foldtext")
   let python_docstring_in_foldtext = 1
 endif
 if !exists('python_check_syntax')
-	let python_check_syntax = 1
+  let python_check_syntax = 1
 endif
 
 
