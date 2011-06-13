@@ -220,7 +220,7 @@ if exists('python_autoindent') && python_autoindent
         let parlnum = searchpair('(\|{\|\[', '', ')\|}\|\]', 'nbW',
               \ "line('.') < " . (plnum - s:maxoff) . " ? dummy :"
               \ . " synIDattr(synID(line('.'), col('.'), 1), 'name')"
-              \ . " =~ '\\(Comment\\|String\\)$'")
+              \ . " =~ '\\(Comment\\|String\\)'")
         if parlnum > 0
           let plindent = indent(parlnum)
           let plnumstart = parlnum
@@ -239,14 +239,14 @@ if exists('python_autoindent') && python_autoindent
         let p = searchpair('(\|{\|\[', '', ')\|}\|\]', 'bW',
               \ "line('.') < " . (a:lnum - s:maxoff) . " ? dummy :"
               \ . " synIDattr(synID(line('.'), col('.'), 1), 'name')"
-              \ . " =~ '\\(Comment\\|String\\)$'")
+              \ . " =~ '\\(Comment\\|String\\)'")
         if p > 0
           if p == plnum
             " When the start is inside parenthesis, only indent one 'shiftwidth'.
             let pp = searchpair('(\|{\|\[', '', ')\|}\|\]', 'bW',
                   \ "line('.') < " . (a:lnum - s:maxoff) . " ? dummy :"
                   \ . " synIDattr(synID(line('.'), col('.'), 1), 'name')"
-                  \ . " =~ '\\(Comment\\|String\\)$'")
+                  \ . " =~ '\\(Comment\\|String\\)'")
             if pp > 0
               return indent(plnum) + (exists("g:pyindent_nested_paren") ? eval(g:pyindent_nested_paren) : &sw)
             endif
