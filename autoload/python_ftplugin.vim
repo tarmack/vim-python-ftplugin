@@ -5,7 +5,7 @@
 " Last Change: July 31, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin_version = '0.5.2'
+let g:python_ftplugin_version = '0.5.3'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -178,6 +178,9 @@ function! python_ftplugin#auto_complete(chr) " {{{1
     let result = "\<C-x>\<C-u>\<Down>"
   elseif a:chr == '.' && xolox#misc#option#get('python_auto_complete_variables', 0)
           \ && search('[A-Za-z0-9_]\%#', 'bc', line('.'))
+          \ && !(pumvisible() && getline('.') =~ '\<import\>')
+    " The last condition ensures that variable completion doesn't trigger when
+    " we are currently inside module name completion.
     let result = "\<C-x>\<C-o>\<Down>"
   endif
   if exists('result')

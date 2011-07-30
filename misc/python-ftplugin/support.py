@@ -1,4 +1,4 @@
-# Completion functions for the Python file type plug-in for Vim.
+# Supporting functions for the Python file type plug-in for Vim.
 # Authors:
 #  - Peter Odding <peter@peterodding.com>
 #  - Bart kroon <bart@tarmack.eu>
