@@ -5,7 +5,7 @@
 " Last Change: July 30, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin_version = '0.4.3'
+let g:python_ftplugin_version = '0.4.4'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -52,12 +52,25 @@ function! python_ftplugin#fold_text() " {{{1
 endfunction
 
 function! python_ftplugin#syntax_check() " {{{1
-  " TODO This creates *.pyc files!
   if xolox#misc#option#get('python_check_syntax', 1)
-    let makeprg = xolox#misc#option#get('python_makeprg')
-    let progname = matchstr(makeprg, '^\w\+')
+    " Enable the user to override python_makeprg and python_error_format.
+    let makeprg = xolox#misc#option#get('python_makeprg', '')
+    let error_format = xolox#misc#option#get('python_error_format', '')
+    " Use reasonable defaults for python_makeprg and python_error_format.
+    if makeprg == '' || error_format == ''
+      " Use pyflakes when available, fall-back to the Python compiler.
+      if executable('pyflakes')
+        let default_makeprg = 'pyflakes "%:p"'
+        let default_error_format = '%A%f:%l: %m,%C%s,%Z%p^,%f:%l: %m'
+      else
+        let default_makeprg = 'python -c "import os, sys, py_compile; sys.stderr = sys.stdout; py_compile.compile(r''%:p''); os.path.isfile(''%:pc'') and os.unlink(''%:pc'')"'
+        let default_error_format = "SyntaxError: ('%m'\\, ('%f'\\, %l\\, %c\\, '%s'))"
+      endif
+    endif
+    " Make sure the syntax checker is installed.
+    let progname = matchstr(makeprg, '^\S\+')
     if !executable(progname)
-      let message = "Python file type plug-in: The configured syntax checker"
+      let message = "python.vim %s: The configured syntax checker"
       let message .= " doesn't seem to be available! I'm disabling"
       let message .= " automatic syntax checking for Python scripts."
       if makeprg == g:python_makeprg
@@ -65,21 +78,23 @@ function! python_ftplugin#syntax_check() " {{{1
       else
         let b:python_check_syntax = 0
       endif
-      echoerr message
+      call xolox#misc#msg#warn(message)
     else
       let mp_save = &makeprg
       let efm_save = &errorformat
       try
-        let &makeprg = xolox#misc#option#get('python_makeprg')
-        let &errorformat = xolox#misc#option#get('python_error_format')
+        let &makeprg = makeprg
+        let &errorformat = error_format
         let winnr = winnr()
-        redraw
         call xolox#misc#msg#info('python.vim %s: Checking Python script syntax ..', g:python_ftplugin_version)
         execute 'silent make!'
+        cwindow
+        if winnr() != winnr
+          let w:quickfix_title = 'Issues reported by ' . progname
+          execute winnr . 'wincmd w'
+        endif
         redraw
         echo ''
-        cwindow
-        execute winnr . 'wincmd w'
       finally
         let &makeprg = mp_save
         let &errorformat = efm_save

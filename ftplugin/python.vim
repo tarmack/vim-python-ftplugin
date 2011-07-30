@@ -79,21 +79,12 @@ if xolox#misc#option#get('python_syntax_fold', 1)
 endif
 
 " Automatic syntax checking. {{{1
-if xolox#misc#option#get('python_check_syntax', 1)
-  if !exists('g:python_makeprg') && !exists('g:python_error_format')
-    if executable('pyflakes')
-      let g:python_makeprg = 'pyflakes "%:p"'
-      let g:python_error_format = '%A%f:%l: %m,%C%s,%Z%p^,%f:%l: %m'
-    else
-      let g:python_makeprg = 'python -c "import os, sys, py_compile; sys.stderr = sys.stdout; py_compile.compile(r''%:p''); os.path.isfile(''%:pc'') and os.unlink(''%:pc'')"'
-      let g:python_error_format = "SyntaxError: ('%m'\\, ('%f'\\, %l\\, %c\\, '%s'))"
-    endif
-  endif
-  augroup PluginFileTypePython
-    autocmd! BufWritePost <buffer> call python_ftplugin#syntax_check()
-    call add(s:undo_ftplugin, 'autocmd! PluginFileTypePython BufWritePost <buffer>')
-  augroup END
-endif
+augroup PluginFileTypePython
+  autocmd! BufWritePost <buffer> call python_ftplugin#syntax_check()
+  call add(s:undo_ftplugin, 'autocmd! PluginFileTypePython BufWritePost <buffer>')
+augroup END
+
+" }}}1
 
 " Let Vim know how to disable the plug-in.
 call map(s:undo_ftplugin, "'execute ' . string(v:val)")
