@@ -5,7 +5,7 @@
 " Last Change: July 30, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin_version = '0.4.7'
+let g:python_ftplugin_version = '0.4.8'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -60,11 +60,11 @@ function! python_ftplugin#syntax_check() " {{{1
     if makeprg == '' || error_format == ''
       " Use pyflakes when available, fall-back to the Python compiler.
       if executable('pyflakes')
-        let default_makeprg = 'pyflakes "%:p"'
-        let default_error_format = '%A%f:%l: %m,%C%s,%Z%p^,%f:%l: %m'
+        let makeprg = 'pyflakes "%:p"'
+        let error_format = '%A%f:%l: %m,%C%s,%Z%p^,%f:%l: %m'
       else
-        let default_makeprg = 'python -c "import os, sys, py_compile; sys.stderr = sys.stdout; py_compile.compile(r''%:p''); os.path.isfile(''%:pc'') and os.unlink(''%:pc'')"'
-        let default_error_format = "SyntaxError: ('%m'\\, ('%f'\\, %l\\, %c\\, '%s'))"
+        let makeprg = 'python -c "import os, sys, py_compile; sys.stderr = sys.stdout; py_compile.compile(r''%:p''); os.path.isfile(''%:pc'') and os.unlink(''%:pc'')"'
+        let error_format = "SyntaxError: ('%m'\\, ('%f'\\, %l\\, %c\\, '%s'))"
       endif
     endif
     " Make sure the syntax checker is installed.
@@ -78,7 +78,7 @@ function! python_ftplugin#syntax_check() " {{{1
       else
         let g:python_check_syntax = 0
       endif
-      call xolox#misc#msg#warn(message)
+      call xolox#misc#msg#warn(message, g:python_ftplugin_version)
     else
       let mp_save = &makeprg
       let efm_save = &errorformat

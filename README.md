@@ -7,6 +7,7 @@ The Python file type plug-in for Vim helps you while developing in Python by pro
  * You can use `gf` to jump to imported files (searches the Python path).
  * You can search imported files using mappings such as `[i`.
  * Control-X Control-U completes all available module names.
+   * Module name completion starts automatically after typing `import` or `from` (automatic completion can be disabled if you find it is too intrusive)
 
 ## Installation
 
