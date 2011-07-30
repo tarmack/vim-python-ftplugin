@@ -23,7 +23,7 @@ function! python_ftplugin#fold_text() " {{{1
       " Fall through.
       let lnum += 1
     endif
-    if g:python_docstring_in_foldtext
+    if xolox#misc#option#get('python_docstring_in_foldtext', 1)
       " Show joined lines from docstring in fold text (can be slow).
       let haystack = join(getline(lnum, v:foldend))
       let docstr = matchstr(haystack, '^\_s*\("""\|''\{3}\)\zs\_.\{-}\ze\1')
@@ -49,20 +49,25 @@ function! python_ftplugin#fold_text() " {{{1
 endfunction
 
 function! python_ftplugin#syntax_check() " {{{1
-  if g:python_check_syntax
-    let progname = matchstr(g:python_makeprg, '^\w\+')
+  if xolox#misc#option#get('python_check_syntax', 1)
+    let makeprg = xolox#misc#option#get('python_makeprg')
+    let progname = matchstr(makeprg, '^\w\+')
     if !executable(progname)
       let message = "Python file type plug-in: The configured syntax checker"
       let message .= " doesn't seem to be available! I'm disabling"
       let message .= " automatic syntax checking for Python scripts."
-      let g:python_check_syntax = 0
+      if makeprg == g:python_makeprg
+        let g:python_check_syntax = 0
+      else
+        let b:python_check_syntax = 0
+      endif
       echoerr message
     else
       let mp_save = &makeprg
       let efm_save = &errorformat
       try
-        let &makeprg = g:python_makeprg
-        let &errorformat = g:python_error_format
+        let &makeprg = xolox#misc#option#get('python_makeprg')
+        let &errorformat = xolox#misc#option#get('python_error_format')
         let winnr = winnr()
         redraw
         call xolox#misc#msg#info('Checking Python script syntax ..')

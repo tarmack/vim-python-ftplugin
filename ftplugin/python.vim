@@ -10,28 +10,6 @@
 
 let g:python_ftplugin_version = '0.3'
 
-" Define configuration defaults. {{{1
-
-if !exists('g:python_syntax_fold')
-  let g:python_syntax_fold = 1
-endif
-
-if !exists('g:python_fold_docstrings')
-  let g:python_fold_docstrings = 1
-endif
-
-if !exists('g:python_docstring_in_foldtext')
-  let g:python_docstring_in_foldtext = 1
-endif
-
-if !exists('g:python_check_syntax')
-  let g:python_check_syntax = 1
-endif
-
-if !exists('g:python_autoindent')
-  let g:python_autoindent = 1
-endif
-
 " Buffer local options. {{{1
 
 " A list of commands that undo buffer local changes made below.
@@ -78,11 +56,11 @@ call add(s:undo_ftplugin, 'nunmap ]m')
 call add(s:undo_ftplugin, 'nunmap [m')
 
 " Enable syntax folding. {{{1
-if g:python_syntax_fold
+if xolox#misc#option#get('python_syntax_fold', 1)
   setlocal foldmethod=syntax
   call add(s:undo_ftplugin, 'setlocal foldmethod<')
   " Match all docstrings that span more than one line.
-  if g:python_fold_docstrings
+  if xolox#misc#option#get('python_fold_docstrings', 1)
     syn region  pythonFoldedString start=+[Bb]\=[Rr]\=[Uu]\=\z("""\|'''\)+ end=+.*\z1+ fold transparent contained
           \ containedin=pythonString,pythonUniString,pythonUniRawString,pythonRawString
   endif
@@ -96,7 +74,7 @@ if g:python_syntax_fold
 endif
 
 " Create variables for Python syntax check. {{{1
-if g:python_check_syntax
+if xolox#misc#option#get('python_check_syntax', 1)
   if !exists('g:python_makeprg') && !exists('g:python_error_format')
     if executable('pyflakes')
       let g:python_makeprg = 'pyflakes "%:p"'
