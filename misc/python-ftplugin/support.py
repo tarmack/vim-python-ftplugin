@@ -51,18 +51,25 @@ def complete_modules():
 
 def complete_variables(expr):
   path = expr.split('.')
-  module = find_one_module(path)
+  module = load_module(path)
   if module:
     for entry in friendly_sort(dir(module)):
       print '.'.join(path + [entry])
 
-def find_one_module(path):
+def load_module(path):
   while path:
     try:
       return __import__('.'.join(path))
     except ImportError:
       if path:
         path.pop()
+
+def find_module_path(name):
+  fname = name.replace('.', '/')
+  for directory in sys.path:
+    scriptfile = directory + '/' + fname + '.py'
+    if os.path.isfile(scriptfile):
+      print scriptfile
 
 def friendly_sort(identifiers):
   identifiers.sort(key=lambda n: n.lower().replace('_', ''))

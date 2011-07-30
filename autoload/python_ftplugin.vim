@@ -5,7 +5,7 @@
 " Last Change: July 31, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin_version = '0.5.1'
+let g:python_ftplugin_version = '0.5.2'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -116,16 +116,9 @@ function! python_ftplugin#jump(motion) range " {{{1
 endfun
 
 function! python_ftplugin#include_expr(fname) " {{{1
+  call s:load_python_script()
   redir => output
-  silent python <<EOF
-import os, sys, vim
-fname = vim.eval('a:fname').replace('.', '/')
-for directory in sys.path:
-  scriptfile = directory + '/' + fname + '.py'
-  if os.path.exists(scriptfile):
-    print scriptfile
-    break
-EOF
+  silent python find_module_path(vim.eval('a:fname'))
   redir END
   return xolox#misc#str#trim(output)
 endfunction
@@ -138,7 +131,7 @@ function! python_ftplugin#complete_modules(findstart, base) " {{{1
     if !exists('s:modulenames')
       let starttime = xolox#misc#timer#start()
       call xolox#misc#msg#info("python.vim %s: Caching list of installed Python modules ..", g:python_ftplugin_version)
-      call s:load_completion_script()
+      call s:load_python_script()
       redir => listing
       silent python complete_modules()
       redir END
@@ -156,11 +149,12 @@ function! s:find_start()
   return col('.') - len(ident) - 1
 endfunction
 
-function! s:load_completion_script()
-  if !exists('s:completion_script_loaded')
-    let scriptfile = s:profile_dir . '/misc/python-ftplugin/completion.py'
+function! s:load_python_script()
+  if !exists('s:python_script_loaded')
+    python import vim
+    let scriptfile = s:profile_dir . '/misc/python-ftplugin/support.py'
     execute 'pyfile' fnameescape(scriptfile)
-    let s:completion_script_loaded = 1
+    let s:python_script_loaded = 1
   endif
 endfunction
 
@@ -168,7 +162,7 @@ function! python_ftplugin#complete_variables(findstart, base) " {{{1
   if a:findstart
     return s:find_start()
   else
-    call s:load_completion_script()
+    call s:load_python_script()
     redir => listing
     silent python complete_variables(vim.eval('a:base'))
     redir END
