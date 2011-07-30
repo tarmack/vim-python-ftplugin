@@ -36,7 +36,12 @@ def complete_modules():
                 modname and modname + '.' + entry or entry))
         elif re.search(r'^[A-Za-z0-9_]+\.py[co]?$', entry):
           name = os.path.splitext(entry)[0]
-          name = modname and modname + '.' + name or name
+          if modname:
+            if name == '__init__':
+              name = ''
+            else:
+              name = '.' + name
+            name = modname + name
           name = re.sub('^(dist|site)-packages.', '', name)
           modulenames.add(name)
 
