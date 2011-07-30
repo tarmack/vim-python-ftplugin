@@ -5,7 +5,7 @@
 " Last Change: July 30, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin_version = '0.4.4'
+let g:python_ftplugin_version = '0.4.5'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -73,10 +73,10 @@ function! python_ftplugin#syntax_check() " {{{1
       let message = "python.vim %s: The configured syntax checker"
       let message .= " doesn't seem to be available! I'm disabling"
       let message .= " automatic syntax checking for Python scripts."
-      if makeprg == g:python_makeprg
-        let g:python_check_syntax = 0
-      else
+      if exists('b:python_makeprg') && b:python_makeprg == makeprg
         let b:python_check_syntax = 0
+      else
+        let g:python_check_syntax = 0
       endif
       call xolox#misc#msg#warn(message)
     else
