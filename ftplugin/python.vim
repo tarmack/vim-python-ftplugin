@@ -14,7 +14,7 @@ else
   let b:did_ftplugin = 1
 endif
 
-let g:python_ftplugin_version = '0.4'
+let g:python_ftplugin_version = '0.4.1'
 
 " Buffer local options. {{{1
 

@@ -99,7 +99,7 @@ endfun
 function! python_ftplugin#include_expr(fname) " {{{1
   redir => output
   silent python <<EOF
-import os, sys
+import os, sys, vim
 fname = vim.eval('a:fname').replace('.', '/')
 for directory in sys.path:
   scriptfile = directory + '/' + fname + '.py'
