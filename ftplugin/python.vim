@@ -4,9 +4,7 @@
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart kroon <bart@tarmack.eu>
 " Last Change: July 30, 2011
-" URL: https://github.com/tarmack/Vim-Python-FT-Plugin
-" Uses: http://pypi.python.org/pypi/pyflakes
-" Inspired By: http://vim.wikia.com/wiki/Python_-_check_syntax_and_run_script
+" URL: https://github.com/tarmack/vim-python-ftplugin
 
 if exists('b:did_ftplugin')
   finish
@@ -87,7 +85,7 @@ if xolox#misc#option#get('python_check_syntax', 1)
       let g:python_makeprg = 'pyflakes "%:p"'
       let g:python_error_format = '%A%f:%l: %m,%C%s,%Z%p^,%f:%l: %m'
     else
-      let g:python_makeprg = 'python -c "import py_compile,sys; sys.stderr = sys.stdout; py_compile.compile(r''%'')"'
+      let g:python_makeprg = 'python -c "import os, sys, py_compile; sys.stderr = sys.stdout; py_compile.compile(r''%:p''); os.path.isfile(''%:pc'') and os.unlink(''%:pc'')"'
       let g:python_error_format = "SyntaxError: ('%m'\\, ('%f'\\, %l\\, %c\\, '%s'))"
     endif
   endif

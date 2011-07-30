@@ -52,7 +52,7 @@ Enables automatic syntax checking when saving Python buffers. This uses [pyflake
 
 ## Contact
 
-If you have questions, bug reports, suggestions, etc. you can contact Bart at <bart@tarmack.eu> or Peter at <peter@peterodding.com>. The latest version is available at <http://peterodding.com/code/vim/python-ftplugin> and <https://github.com/tarmack/Vim-Python-FT-Plugin>.
+If you have questions, bug reports, suggestions, etc. you can contact Bart at <bart@tarmack.eu> or Peter at <peter@peterodding.com>. The latest version is available at <http://peterodding.com/code/vim/python-ftplugin> and <https://github.com/tarmack/vim-python-ftplugin>.
 
 ## License
 

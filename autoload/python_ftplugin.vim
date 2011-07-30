@@ -3,9 +3,9 @@
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart kroon <bart@tarmack.eu>
 " Last Change: July 30, 2011
-" URL: https://github.com/tarmack/Vim-Python-FT-Plugin
+" URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin_version = '0.4.2'
+let g:python_ftplugin_version = '0.4.3'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
