@@ -5,7 +5,7 @@
 " Last Change: July 30, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin_version = '0.4.8'
+let g:python_ftplugin_version = '0.4.9'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -163,7 +163,7 @@ function! python_ftplugin#auto_complete(chr) " {{{1
         autocmd! CursorHold,CursorHoldI <buffer> call s:restore_completeopt()
       augroup END
       " Enter the space and start module name completion.
-      return " \<C-x>\<C-u>"
+      return " \<C-x>\<C-u>\<Down>"
     endif
   endif
   return a:chr
