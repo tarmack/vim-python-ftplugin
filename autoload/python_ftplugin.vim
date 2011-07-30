@@ -95,3 +95,18 @@ function! python_ftplugin#jump(motion) range " {{{1
     call histdel('/', -1)
     let @/ = save    " restore last search pattern
 endfun
+
+function! python_ftplugin#include_expr(fname) " {{{1
+  redir => output
+  python <<EOF
+import os, sys
+fname = vim.eval('a:fname').replace('.', '/')
+for directory in sys.path:
+  scriptfile = directory + '/' + fname + '.py'
+  if os.path.exists(scriptfile):
+    print scriptfile
+    break
+EOF
+  redir END
+  return xolox#misc#str#trim(output)
+endfunction

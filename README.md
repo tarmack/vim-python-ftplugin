@@ -1,6 +1,11 @@
 # Vim file type plug-in for the Python programming language
 
-This file helps you while developing in Python. It uses [pyflakes] [pyflakes] to check for syntax errors when saving the file. This file also provides you with syntax based folding for functions and classes. The fold text includes the docstring if it is found.
+The Python file type plug-in for Vim helps you while developing in Python by providing the following features:
+
+ * Automatic syntax checking using [pyflakes] [pyflakes].
+ * Syntax based folding for classes, functions, comment blocks and multi line strings (the fold text includes the docstring if found).
+ * You can use `gf` to jump to imported files (searches the Python path).
+ * You can search imported files using mappings such as `[i`.
 
 ## Installation
 

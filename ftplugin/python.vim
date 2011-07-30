@@ -14,7 +14,7 @@ else
   let b:did_ftplugin = 1
 endif
 
-let g:python_ftplugin_version = '0.3.1'
+let g:python_ftplugin_version = '0.3.2'
 
 " Buffer local options. {{{1
 
@@ -28,7 +28,7 @@ call add(s:undo_ftplugin, 'setlocal cinkeys< indentkeys<')
 " Follow import statements.
 " TODO Expand $PYTHON_PATH!
 setlocal include=\s*\\(from\\\|import\\)
-setlocal includeexpr=substitute(v:fname,'\\.','/','g')
+setlocal includeexpr=python_ftplugin#include_expr(v:fname)
 setlocal suffixesadd=.py
 call add(s:undo_ftplugin, 'setlocal include< includeexpr< suffixesadd<')
 
