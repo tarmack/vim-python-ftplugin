@@ -8,6 +8,8 @@
 " Uses: http://pypi.python.org/pypi/pyflakes
 " Inspired By: http://vim.wikia.com/wiki/Python_-_check_syntax_and_run_script
 
+let g:python_ftplugin_version = '0.3'
+
 " Define configuration defaults. {{{1
 
 if !exists('g:python_syntax_fold')
@@ -30,9 +32,55 @@ if !exists('g:python_autoindent')
   let g:python_autoindent = 1
 endif
 
+" Buffer local options. {{{1
+
+" A list of commands that undo buffer local changes made below.
+let s:undo_ftplugin = []
+
+" Make sure "#" doesn't jump to the start of the line.
+setlocal cinkeys-=0# indentkeys-=0#
+call add(s:undo_ftplugin, 'setlocal cinkeys< indentkeys<')
+
+" Follow import statements.
+" TODO Expand $PYTHON_PATH!
+setlocal include=\s*\\(from\\\|import\\)
+setlocal includeexpr=substitute(v:fname,'\\.','/','g')
+setlocal suffixesadd=.py
+call add(s:undo_ftplugin, 'setlocal include< includeexpr< suffixesadd<')
+
+" Enable formatting of comments.
+setlocal comments=b:#
+setlocal commentstring=#%s
+call add(s:undo_ftplugin, 'setlocal comments< commentstring<')
+
+" Ignore bytecode files during completion.
+set wildignore+=*.pyc wildignore+=*.pyo
+call add(s:undo_ftplugin, 'setlocal wildignore<')
+
+" Alternate fold text generating function.
+setlocal foldtext=python_ftplugin#fold_text()
+call add(s:undo_ftplugin, 'setlocal foldtext<')
+
+" File open/save dialog filename filter on Windows.
+if has('gui_win32') && !exists('b:browsefilter')
+  let b:browsefilter = "Python Files (*.py)\t*.py\nAll Files (*.*)\t*.*\n"
+  call add(s:undo_ftplugin, 'unlet! b:browsefilter')
+endif
+
+" Mappings to jump between classes and functions. {{{1
+nnoremap <silent> <buffer> ]] :call python_ftplugin#jump('/^\(class\\|def\)')<cr>
+nnoremap <silent> <buffer> [[ :call python_ftplugin#jump('?^\(class\\|def\)')<cr>
+nnoremap <silent> <buffer> ]m :call python_ftplugin#jump('/^\s*\(class\\|def\)')<cr>
+nnoremap <silent> <buffer> [m :call python_ftplugin#jump('?^\s*\(class\\|def\)')<cr>
+call add(s:undo_ftplugin, 'nunmap ]]')
+call add(s:undo_ftplugin, 'nunmap [[')
+call add(s:undo_ftplugin, 'nunmap ]m')
+call add(s:undo_ftplugin, 'nunmap [m')
+
 " Enable syntax folding. {{{1
 if g:python_syntax_fold
   setlocal foldmethod=syntax
+  call add(s:undo_ftplugin, 'setlocal foldmethod<')
   " Match all docstrings that span more than one line.
   if g:python_fold_docstrings
     syn region  pythonFoldedString start=+[Bb]\=[Rr]\=[Uu]\=\z("""\|'''\)+ end=+.*\z1+ fold transparent contained
@@ -47,12 +95,8 @@ if g:python_syntax_fold
         \ end="^\%(\z1\#.*$\)\@!" fold contains=ALLBUT,pythonCommentFold
 endif
 
-" Alternate fold text generating function. {{{1
-setlocal foldtext=python_ftplugin#fold_text()
-
 " Create variables for Python syntax check. {{{1
 if g:python_check_syntax
-
   if !exists('g:python_makeprg') && !exists('g:python_error_format')
     if executable('pyflakes')
       let g:python_makeprg = 'pyflakes "%:p"'
@@ -62,14 +106,18 @@ if g:python_check_syntax
       let g:python_error_format = "SyntaxError: ('%m'\\, ('%f'\\, %l\\, %c\\, '%s'))"
     endif
   endif
-
   " Enable plug-in for current buffer without reloading? {{{1
   " Enable automatic command to check for syntax errors when saving buffers.
   augroup PluginFileTypePython
     autocmd! BufWritePost <buffer> call python_ftplugin#syntax_check()
+    call add(s:undo_ftplugin, 'autocmd! PluginFileTypePython BufWritePost <buffer>')
   augroup END
-
 endif
+
+" Let Vim know how to disable the plug-in.
+call map(s:undo_ftplugin, "'execute ' . string(v:val)")
+let b:undo_ftplugin = join(s:undo_ftplugin, ' | ')
+unlet s:undo_ftplugin
 
 let g:loaded_python_ftplugin = 1
 

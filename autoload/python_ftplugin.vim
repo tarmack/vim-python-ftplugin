@@ -5,7 +5,7 @@
 " Last Change: July 30, 2011
 " URL: https://github.com/tarmack/Vim-Python-FT-Plugin
 
-function! python_ftplugin#fold_text()
+function! python_ftplugin#fold_text() " {{{1
   let line = getline(v:foldstart)
   if line =~ '^\s*#'
     " Comment block.
@@ -78,3 +78,15 @@ function! python_ftplugin#syntax_check() " {{{1
     endif
   endif
 endfunction
+
+function! python_ftplugin#jump(motion) range " {{{1
+    let cnt = v:count1
+    let save = @/    " save last search pattern
+    mark '
+    while cnt > 0
+    silent! exe a:motion
+    let cnt = cnt - 1
+    endwhile
+    call histdel('/', -1)
+    let @/ = save    " restore last search pattern
+endfun
