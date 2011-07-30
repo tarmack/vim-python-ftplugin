@@ -50,6 +50,10 @@ To display the docstring of a class/function in the fold text.
 
 Enables automatic syntax checking when saving Python buffers. This uses [pyflakes] [pyflakes] when available but falls back on the standard Python compiler for syntax checking.
 
+### The `g:python_auto_complete` option
+
+Enables automatic completion of module names after typing `import<Space>` or `from<Space>`.
+
 ## Contact
 
 If you have questions, bug reports, suggestions, etc. you can contact Bart at <bart@tarmack.eu> or Peter at <peter@peterodding.com>. The latest version is available at <http://peterodding.com/code/vim/python-ftplugin> and <https://github.com/tarmack/vim-python-ftplugin>.

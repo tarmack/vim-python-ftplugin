@@ -5,7 +5,7 @@
 " Last Change: July 30, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin_version = '0.4.5'
+let g:python_ftplugin_version = '0.4.6'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -150,4 +150,33 @@ function! python_ftplugin#complete_modules(findstart, base) " {{{1
     let pattern = '^' . a:base
     return filter(copy(s:modulenames), 'v:val =~ pattern')
   endif
+endfunction
+
+function!	python_ftplugin#auto_complete(chr) " {{{1
+  if xolox#misc#option#get('python_auto_complete', 1)
+    if a:chr == ' ' && search('\<\(from\|import\)$', 'bc', line('.'))
+      " Make sure Vim opens the menu but doesn't enter the first match.
+      let b:python_cot_save = &completeopt
+      set completeopt+=menu,menuone,longest
+      " Restore &completeopt after completion.
+      augroup PluginFileTypePython
+        autocmd! CursorHold,CursorHoldI <buffer> call s:restore_completeopt()
+      augroup END
+      " Enter the space and start module name completion.
+      return " \<C-x>\<C-u>"
+    endif
+  endif
+  return a:chr
+endfunction
+
+function! s:restore_completeopt()
+  " Restore the original value of &completeopt.
+  if exists('b:python_cot_save')
+    let &completeopt = b:python_cot_save
+    unlet b:python_cot_save
+  endif
+  " Disable the automatic command that called us.
+  augroup PluginFileTypePython
+    autocmd! CursorHold,CursorHoldI <buffer>
+  augroup END
 endfunction

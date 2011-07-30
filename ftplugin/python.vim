@@ -84,6 +84,9 @@ augroup PluginFileTypePython
   call add(s:undo_ftplugin, 'autocmd! PluginFileTypePython BufWritePost <buffer>')
 augroup END
 
+" Support for automatic completion. {{{1
+inoremap <buffer> <expr> <Space> python_ftplugin#auto_complete(' ')
+
 " }}}1
 
 " Let Vim know how to disable the plug-in.
