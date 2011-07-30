@@ -8,7 +8,13 @@
 " Uses: http://pypi.python.org/pypi/pyflakes
 " Inspired By: http://vim.wikia.com/wiki/Python_-_check_syntax_and_run_script
 
-let g:python_ftplugin_version = '0.3'
+if exists('b:did_ftplugin')
+  finish
+else
+  let b:did_ftplugin = 1
+endif
+
+let g:python_ftplugin_version = '0.3.1'
 
 " Buffer local options. {{{1
 
@@ -50,10 +56,10 @@ nnoremap <silent> <buffer> ]] :call python_ftplugin#jump('/^\(class\\|def\)')<cr
 nnoremap <silent> <buffer> [[ :call python_ftplugin#jump('?^\(class\\|def\)')<cr>
 nnoremap <silent> <buffer> ]m :call python_ftplugin#jump('/^\s*\(class\\|def\)')<cr>
 nnoremap <silent> <buffer> [m :call python_ftplugin#jump('?^\s*\(class\\|def\)')<cr>
-call add(s:undo_ftplugin, 'nunmap ]]')
-call add(s:undo_ftplugin, 'nunmap [[')
-call add(s:undo_ftplugin, 'nunmap ]m')
-call add(s:undo_ftplugin, 'nunmap [m')
+call add(s:undo_ftplugin, 'nunmap <buffer> ]]')
+call add(s:undo_ftplugin, 'nunmap <buffer> [[')
+call add(s:undo_ftplugin, 'nunmap <buffer> ]m')
+call add(s:undo_ftplugin, 'nunmap <buffer> [m')
 
 " Enable syntax folding. {{{1
 if xolox#misc#option#get('python_syntax_fold', 1)
