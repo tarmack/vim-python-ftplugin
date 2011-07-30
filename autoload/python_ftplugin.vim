@@ -47,3 +47,34 @@ function! python_ftplugin#fold_text()
   let format = "+%s %" . len(line('$')) . "d lines: %s "
   return printf(format, v:folddashes, numlines, join(text))
 endfunction
+
+function! python_ftplugin#syntax_check() " {{{1
+  if g:python_check_syntax
+    let progname = matchstr(g:python_makeprg, '^\w\+')
+    if !executable(progname)
+      let message = "Python file type plug-in: The configured syntax checker"
+      let message .= " doesn't seem to be available! I'm disabling"
+      let message .= " automatic syntax checking for Python scripts."
+      let g:python_check_syntax = 0
+      echoerr message
+    else
+      let mp_save = &makeprg
+      let efm_save = &errorformat
+      try
+        let &makeprg = g:python_makeprg
+        let &errorformat = g:python_error_format
+        let winnr = winnr()
+        redraw
+        call xolox#misc#msg#info('Checking Python script syntax ..')
+        execute 'silent make!'
+        redraw
+        echo ''
+        cwindow
+        execute winnr . 'wincmd w'
+      finally
+        let &makeprg = mp_save
+        let &errorformat = efm_save
+      endtry
+    endif
+  endif
+endfunction
