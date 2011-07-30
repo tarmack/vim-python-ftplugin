@@ -68,4 +68,4 @@ def friendly_sort(identifiers):
   identifiers.sort(key=lambda n: n.lower().replace('_', ''))
   return identifiers
 
-# vim: ts=2 sw=2 et
+# vim: ts=2 sw=2 sts=2 et
