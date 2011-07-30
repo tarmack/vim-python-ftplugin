@@ -5,6 +5,9 @@
 " Last Change: July 30, 2011
 " URL: https://github.com/tarmack/Vim-Python-FT-Plugin
 
+let g:python_ftplugin_version = '0.4.2'
+let s:profile_dir = expand('<sfile>:p:h:h')
+
 function! python_ftplugin#fold_text() " {{{1
   let line = getline(v:foldstart)
   if line =~ '^\s*#'
@@ -49,6 +52,7 @@ function! python_ftplugin#fold_text() " {{{1
 endfunction
 
 function! python_ftplugin#syntax_check() " {{{1
+  " TODO This creates *.pyc files!
   if xolox#misc#option#get('python_check_syntax', 1)
     let makeprg = xolox#misc#option#get('python_makeprg')
     let progname = matchstr(makeprg, '^\w\+')
@@ -70,7 +74,7 @@ function! python_ftplugin#syntax_check() " {{{1
         let &errorformat = xolox#misc#option#get('python_error_format')
         let winnr = winnr()
         redraw
-        call xolox#misc#msg#info('Checking Python script syntax ..')
+        call xolox#misc#msg#info('python.vim %s: Checking Python script syntax ..', g:python_ftplugin_version)
         execute 'silent make!'
         redraw
         echo ''
@@ -117,32 +121,18 @@ function! python_ftplugin#complete_modules(findstart, base) " {{{1
     let ident = matchstr(prefix, '[A-Za-z0-9_.]\+$')
     let col = col('.') - len(ident) - 1
     return col
+  else
+    if !exists('s:modulenames')
+      let starttime = xolox#misc#timer#start()
+      call xolox#misc#msg#info("python.vim %s: Caching list of installed Python modules ..", g:python_ftplugin_version)
+      redir => listing
+        let scriptfile = s:profile_dir . '/misc/python-ftplugin/modulenames.py'
+        silent execute 'pyfile' fnameescape(scriptfile)
+      redir END
+      let s:modulenames = split(listing, '\n')
+      call xolox#misc#timer#stop("python.vim %s: Found %i module names in %s.", g:python_ftplugin_version, len(s:modulenames), starttime)
+    endif
+    let pattern = '^' . a:base
+    return filter(copy(s:modulenames), 'v:val =~ pattern')
   endif
-  redir => output
-  silent python <<EOF
-import os, sys, re
-todo = [(p, None) for p in sys.path]
-done = set()
-while todo:
-  directory, modname = todo.pop(0)
-  if os.path.isdir(directory):
-    for entry in os.listdir(directory):
-      pathname = '%s/%s' % (directory, entry)
-      if os.path.isdir(pathname):
-        todo.append((pathname,
-            modname and modname + '.' + entry or entry))
-      elif re.search(r'^[A-Za-z0-9_]+\.py[co]?$', entry) and not entry.startswith('_'):
-        entry = re.sub(r'\.py[co]?$', '', entry)
-        temp = modname and modname + '.' + entry or entry
-        temp = re.sub('^(dist|site)-packages.', '', temp)
-        if '.egg' not in temp and temp not in done:
-          done.add(temp)
-          print temp
-EOF
-  redir END
-  let lines = split(output, '\n')
-  let pattern = '^' . a:base
-  call filter(lines, 'v:val =~ pattern')
-  call sort(lines)
-  return lines
 endfunction

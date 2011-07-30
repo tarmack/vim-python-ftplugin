@@ -6,6 +6,7 @@ The Python file type plug-in for Vim helps you while developing in Python by pro
  * Syntax based folding for classes, functions, comment blocks and multi line strings (the fold text includes the docstring if found).
  * You can use `gf` to jump to imported files (searches the Python path).
  * You can search imported files using mappings such as `[i`.
+ * Control-X Control-U completes all available module names.
 
 ## Installation
 
