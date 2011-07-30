@@ -1,8 +1,9 @@
 " Vim file type plug-in
 " Language: Python
-" Maintainer: Peter Odding <peter@peterodding.com> (syntax check)
-" Maintainer: Bart kroon <bart@tarmack.eu> (folding)
-" Last Change: February 19, 2011
+" Maintainers:
+"  - Peter Odding <peter@peterodding.com> (syntax check)
+"  - Bart kroon <bart@tarmack.eu> (folding)
+" Last Change: July 30, 2011
 " URL: https://github.com/tarmack/Vim-Python-FT-Plugin
 " Uses: http://pypi.python.org/pypi/pyflakes
 " Inspired By: http://vim.wikia.com/wiki/Python_-_check_syntax_and_run_script
@@ -67,42 +68,49 @@ endif
 " This looks for the first text in comments to get some meaningfull text in
 " for block comments.
 " It also looks for the first Docstring line and appends it to the text.
-if exists("python_docstring_in_foldtext") && python_docstring_in_foldtext
-  set foldtext=PythonFoldText()
+if g:python_docstring_in_foldtext
+  setlocal foldtext=PythonFoldText()
   function! PythonFoldText()
-    for i in range(v:foldstart, v:foldend)
-      let line = getline(i)
-      if match(line, "[:alphanum:]") >= 0
-        break
+    let line = getline(v:foldstart)
+    if line =~ '^\s*#'
+      " Comment block.
+      let text = ['#']
+      for line in getline(v:foldstart, v:foldend)
+        call extend(text, split(line)[1:])
+      endfor
+    else
+      let text = []
+      let lnum = v:foldstart
+      if line =~ '^\s*\(def\|class\)\>'
+        " Class or function body.
+        let line = xolox#misc#str#trim(line)
+        call add(text, substitute(line, ':$', '', ''))
+        " Fall through.
+        let lnum += 1
       endif
-    endfor
-    if i == v:foldend
-      let line = getline(v:foldstart)
-    endif
-
-    let lineCount = v:foldend-v:foldstart+1
-    let line = substitute(line, '^\s*\|/\*\|\*/\|{\{{\d\=', '', 'g')
-
-    let doc = ""
-    if exists("g:python_docstring_in_foldtext") && g:python_docstring_in_foldtext != 0
-      for i in range(v:foldstart+1, v:foldstart+3)
-        let str = getline(i)
-        if strlen(substitute(str, '^\s*\(.\{-}\)\s*$', '\1', '')) > 0
-          let id = synID(i, match(str, "[:graph:]"), 0)
-          if match(synIDattr(id, "name"), "String") >= 0
-            let doc = doc . substitute(str, '^\s*\(.\{-}\)\s*$', '\1', '')
-            if match(str, "[:alphanum:]") >= 0
-              break
-            endif
-          else
-            let doc = ""
+      if g:python_docstring_in_foldtext
+        " Show joined lines from docstring in fold text (can be slow).
+        let haystack = join(getline(lnum, v:foldend))
+        let docstr = matchstr(haystack, '^\_s*\("""\|''\{3}\)\zs\_.\{-}\ze\1')
+        if docstr =~ '\S'
+          if lnum > v:foldstart
+            call add(text, '-')
+          endif
+          call extend(text, split(docstr))
+        endif
+      else
+        " Show first actual line of docstring.
+        for line in getline(lnum, lnum + 5)
+          if line =~ '\w'
+            call add(text, xolox#misc#str#trim(line))
             break
           endif
-        endif
-      endfor
+        endfor
+      endif
     endif
-    let format = "+%s %" . len(line('$')) . "d lines %s  %s"
-    return printf(format, v:folddashes, lineCount, line, doc)
+    let numlines = v:foldend - v:foldstart + 1
+    let format = "+%s %" . len(line('$')) . "d lines: %s "
+    return printf(format, v:folddashes, numlines, join(text))
   endfunction
 endif
 
