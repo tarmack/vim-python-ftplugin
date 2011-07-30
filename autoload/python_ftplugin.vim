@@ -5,7 +5,7 @@
 " Last Change: July 30, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin_version = '0.4.6'
+let g:python_ftplugin_version = '0.4.7'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -152,9 +152,9 @@ function! python_ftplugin#complete_modules(findstart, base) " {{{1
   endif
 endfunction
 
-function!	python_ftplugin#auto_complete(chr) " {{{1
+function! python_ftplugin#auto_complete(chr) " {{{1
   if xolox#misc#option#get('python_auto_complete', 1)
-    if a:chr == ' ' && search('\<\(from\|import\)$', 'bc', line('.'))
+    if a:chr == ' ' && search('\<\(from\|import\)\%#', 'bc', line('.'))
       " Make sure Vim opens the menu but doesn't enter the first match.
       let b:python_cot_save = &completeopt
       set completeopt+=menu,menuone,longest
