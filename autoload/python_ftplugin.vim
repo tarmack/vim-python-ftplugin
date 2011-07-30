@@ -98,7 +98,7 @@ endfun
 
 function! python_ftplugin#include_expr(fname) " {{{1
   redir => output
-  python <<EOF
+  silent python <<EOF
 import os, sys
 fname = vim.eval('a:fname').replace('.', '/')
 for directory in sys.path:
@@ -109,4 +109,40 @@ for directory in sys.path:
 EOF
   redir END
   return xolox#misc#str#trim(output)
+endfunction
+
+function! python_ftplugin#complete_modules(findstart, base) " {{{1
+  if a:findstart
+    let prefix = getline('.')[0 : col('.')-2]
+    let ident = matchstr(prefix, '[A-Za-z0-9_.]\+$')
+    let col = col('.') - len(ident) - 1
+    return col
+  endif
+  redir => output
+  silent python <<EOF
+import os, sys, re
+todo = [(p, None) for p in sys.path]
+done = set()
+while todo:
+  directory, modname = todo.pop(0)
+  if os.path.isdir(directory):
+    for entry in os.listdir(directory):
+      pathname = '%s/%s' % (directory, entry)
+      if os.path.isdir(pathname):
+        todo.append((pathname,
+            modname and modname + '.' + entry or entry))
+      elif re.search(r'^[A-Za-z0-9_]+\.py[co]?$', entry) and not entry.startswith('_'):
+        entry = re.sub(r'\.py[co]?$', '', entry)
+        temp = modname and modname + '.' + entry or entry
+        temp = re.sub('^(dist|site)-packages.', '', temp)
+        if '.egg' not in temp and temp not in done:
+          done.add(temp)
+          print temp
+EOF
+  redir END
+  let lines = split(output, '\n')
+  let pattern = '^' . a:base
+  call filter(lines, 'v:val =~ pattern')
+  call sort(lines)
+  return lines
 endfunction

@@ -14,7 +14,7 @@ else
   let b:did_ftplugin = 1
 endif
 
-let g:python_ftplugin_version = '0.3.2'
+let g:python_ftplugin_version = '0.4'
 
 " Buffer local options. {{{1
 
@@ -26,7 +26,6 @@ setlocal cinkeys-=0# indentkeys-=0#
 call add(s:undo_ftplugin, 'setlocal cinkeys< indentkeys<')
 
 " Follow import statements.
-" TODO Expand $PYTHON_PATH!
 setlocal include=\s*\\(from\\\|import\\)
 setlocal includeexpr=python_ftplugin#include_expr(v:fname)
 setlocal suffixesadd=.py
@@ -44,6 +43,10 @@ call add(s:undo_ftplugin, 'setlocal wildignore<')
 " Alternate fold text generating function.
 setlocal foldtext=python_ftplugin#fold_text()
 call add(s:undo_ftplugin, 'setlocal foldtext<')
+
+" Alternate fold text generating function.
+setlocal completefunc=python_ftplugin#complete_modules
+call add(s:undo_ftplugin, 'setlocal completefunc<')
 
 " File open/save dialog filename filter on Windows.
 if has('gui_win32') && !exists('b:browsefilter')
@@ -65,21 +68,21 @@ call add(s:undo_ftplugin, 'nunmap <buffer> [m')
 if xolox#misc#option#get('python_syntax_fold', 1)
   setlocal foldmethod=syntax
   call add(s:undo_ftplugin, 'setlocal foldmethod<')
-  " Match all docstrings that span more than one line.
+  " Match docstrings that span more than one line.
   if xolox#misc#option#get('python_fold_docstrings', 1)
     syn region  pythonFoldedString start=+[Bb]\=[Rr]\=[Uu]\=\z("""\|'''\)+ end=+.*\z1+ fold transparent contained
           \ containedin=pythonString,pythonUniString,pythonUniRawString,pythonRawString
   endif
-  " Match all function and class definitions. 
+  " Match function and class definitions. 
   syntax region  pythonFunctionFold start="^\(\s*\)\%(def\|class\)\s\+\_.\{-\}:\%(\s*\|\s*#.*\)\n\%(\s*\n\)*\z(\1\s\+\)"
         \ skip="\%(^\s*\n\|^\z1.*\|^\s*#.*\)"
         \ end="^\ze\%(\%(\z1.*\)\@!\|\z1\)" fold transparent
-  " Match all Comments that span more than one line.
+  " Match comments that span more than one line.
   syntax region  pythonCommentFold start="^\z(\s*\)#\%(!\|\s*-\*-\)\@!.*$" 
         \ end="^\%(\z1\#.*$\)\@!" fold contains=ALLBUT,pythonCommentFold
 endif
 
-" Create variables for Python syntax check. {{{1
+" Automatic syntax checking. {{{1
 if xolox#misc#option#get('python_check_syntax', 1)
   if !exists('g:python_makeprg') && !exists('g:python_error_format')
     if executable('pyflakes')
@@ -90,8 +93,6 @@ if xolox#misc#option#get('python_check_syntax', 1)
       let g:python_error_format = "SyntaxError: ('%m'\\, ('%f'\\, %l\\, %c\\, '%s'))"
     endif
   endif
-  " Enable plug-in for current buffer without reloading? {{{1
-  " Enable automatic command to check for syntax errors when saving buffers.
   augroup PluginFileTypePython
     autocmd! BufWritePost <buffer> call python_ftplugin#syntax_check()
     call add(s:undo_ftplugin, 'autocmd! PluginFileTypePython BufWritePost <buffer>')
