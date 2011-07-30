@@ -2,10 +2,10 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart kroon <bart@tarmack.eu>
-" Last Change: July 30, 2011
+" Last Change: July 31, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin_version = '0.4.9'
+let g:python_ftplugin_version = '0.5'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -132,17 +132,15 @@ endfunction
 
 function! python_ftplugin#complete_modules(findstart, base) " {{{1
   if a:findstart
-    let prefix = getline('.')[0 : col('.')-2]
-    let ident = matchstr(prefix, '[A-Za-z0-9_.]\+$')
-    let col = col('.') - len(ident) - 1
-    return col
+    return s:find_start()
   else
+    " TODO Always scan current directory?
     if !exists('s:modulenames')
       let starttime = xolox#misc#timer#start()
       call xolox#misc#msg#info("python.vim %s: Caching list of installed Python modules ..", g:python_ftplugin_version)
+      call s:load_completion_script()
       redir => listing
-        let scriptfile = s:profile_dir . '/misc/python-ftplugin/modulenames.py'
-        silent execute 'pyfile' fnameescape(scriptfile)
+      silent python complete_modules()
       redir END
       let s:modulenames = split(listing, '\n')
       call xolox#misc#timer#stop("python.vim %s: Found %i module names in %s.", g:python_ftplugin_version, len(s:modulenames), starttime)
@@ -152,19 +150,52 @@ function! python_ftplugin#complete_modules(findstart, base) " {{{1
   endif
 endfunction
 
+function! s:find_start()
+  let prefix = getline('.')[0 : col('.')-2]
+  let ident = matchstr(prefix, '[A-Za-z0-9_.]\+$')
+  return col('.') - len(ident) - 1
+endfunction
+
+function! s:load_completion_script()
+  if !exists('s:completion_script_loaded')
+    let scriptfile = s:profile_dir . '/misc/python-ftplugin/completion.py'
+    execute 'pyfile' fnameescape(scriptfile)
+    let s:completion_script_loaded = 1
+  endif
+endfunction
+
+function! python_ftplugin#complete_variables(findstart, base) " {{{1
+  if a:findstart
+    return s:find_start()
+  else
+    call s:load_completion_script()
+    redir => listing
+    silent python complete_variables(vim.eval('a:base'))
+    redir END
+    let variables = split(listing, '\n')
+    let pattern = '^' . a:base
+    return filter(variables, 'v:val =~ pattern')
+  endif
+endfunction
+
 function! python_ftplugin#auto_complete(chr) " {{{1
-  if xolox#misc#option#get('python_auto_complete', 1)
-    if a:chr == ' ' && search('\<\(from\|import\)\%#', 'bc', line('.'))
-      " Make sure Vim opens the menu but doesn't enter the first match.
-      let b:python_cot_save = &completeopt
-      set completeopt+=menu,menuone,longest
-      " Restore &completeopt after completion.
-      augroup PluginFileTypePython
-        autocmd! CursorHold,CursorHoldI <buffer> call s:restore_completeopt()
-      augroup END
-      " Enter the space and start module name completion.
-      return " \<C-x>\<C-u>\<Down>"
-    endif
+  if a:chr == ' ' && xolox#misc#option#get('python_auto_complete_modules', 1)
+          \ && search('\<\(from\|import\)\%#', 'bc', line('.'))
+    let result = "\<C-x>\<C-u>\<Down>"
+  elseif a:chr == '.' && xolox#misc#option#get('python_auto_complete_variables', 0)
+          \ && search('[A-Za-z0-9_]\%#', 'bc', line('.'))
+    let result = "\<C-x>\<C-o>\<Down>"
+  endif
+  if exists('result')
+    " Make sure Vim opens the menu but doesn't enter the first match.
+    let b:python_cot_save = &completeopt
+    set completeopt+=menu,menuone,longest
+    " Restore &completeopt after completion.
+    augroup PluginFileTypePython
+      autocmd! CursorHold,CursorHoldI <buffer> call s:restore_completeopt()
+    augroup END
+    " Enter character and start completion.
+    return a:chr . result
   endif
   return a:chr
 endfunction

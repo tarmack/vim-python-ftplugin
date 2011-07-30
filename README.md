@@ -7,7 +7,9 @@ The Python file type plug-in for Vim helps you while developing in Python by pro
  * You can use `gf` to jump to imported files (searches the Python path).
  * You can search imported files using mappings such as `[i`.
  * Control-X Control-U completes all available module names.
-   * Module name completion starts automatically after typing `import` or `from` (automatic completion can be disabled if you find it is too intrusive)
+   * Module name completion starts automatically after typing `import` or `from` (automatic completion can be disabled if you find it is too intrusive).
+ * Control-X Control-O completes variable names, for example after `os` or `os.` it would complete `os.path` (and others). *Be aware that this imports modules to perform introspection and assumes that importing a module does not have serious side effects (although it might, however it shouldn't).*
+   * You can enable automatic variable completion after typing a dot (*this is not enabled by default because of the side effect issue mentioned above*).
 
 ## Installation
 
@@ -51,9 +53,13 @@ To display the docstring of a class/function in the fold text.
 
 Enables automatic syntax checking when saving Python buffers. This uses [pyflakes] [pyflakes] when available but falls back on the standard Python compiler for syntax checking.
 
-### The `g:python_auto_complete` option
+### The `g:python_auto_complete_modules` option
 
-Enables automatic completion of module names after typing `import<Space>` or `from<Space>`.
+Controls automatic completion of module names after typing `import<Space>` or `from<Space>`. Enabled by default.
+
+### The `g:python_auto_complete_variables` option
+
+Controls automatic completion of variables after typing a dot. Disabled by default.
 
 ## Contact
 
