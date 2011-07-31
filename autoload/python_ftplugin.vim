@@ -2,10 +2,10 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart kroon <bart@tarmack.eu>
-" Last Change: August 1, 2011
+" Last Change: July 31, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin_version = '0.5.5'
+let g:python_ftplugin_version = '0.5.6'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -125,31 +125,62 @@ endfunction
 
 function! python_ftplugin#complete_modules(findstart, base) " {{{1
   if a:findstart
-    return s:find_start()
+    return s:find_start('module')
   else
     " TODO Always scan current directory?
-    if !exists('s:modulenames')
-      let starttime = xolox#misc#timer#start()
-      call xolox#misc#msg#info("python.vim %s: Caching list of installed Python modules ..", g:python_ftplugin_version)
-      call s:load_python_script()
-      redir => listing
-      silent python complete_modules()
-      redir END
-      let s:modulenames = split(listing, '\n')
-      call xolox#misc#timer#stop("python.vim %s: Found %i module names in %s.", g:python_ftplugin_version, len(s:modulenames), starttime)
-    endif
-    let pattern = '^' . xolox#misc#escape#pattern(a:base)
-    return filter(copy(s:modulenames), 'v:val =~ pattern')
+    let starttime = xolox#misc#timer#start()
+    let candidates = s:add_modules(a:base, [])
+    call xolox#misc#timer#stop("python.vim %s: Found %s completion candidates in %s.", g:python_ftplugin_version, len(candidates), starttime)
+    return candidates
   endif
 endfunction
 
-function! s:find_start()
+function! s:find_module(base)
+  let todo = split(a:base, '\.')
+  let done = []
+  let node = python_ftplugin#get_modules()
+  while !empty(todo) && has_key(node, todo[0])
+    let name = remove(todo, 0)
+    let node = node[name]
+    call add(done, name)
+  endwhile
+  return [todo, done, node]
+endfunction
+
+function! s:find_start(type) " {{{2
   let prefix = getline('.')[0 : col('.')-2]
   let ident = matchstr(prefix, '[A-Za-z0-9_.]\+$')
+  call xolox#misc#msg#debug("python.vim %s: Completing %s `%s'.", g:python_ftplugin_version, a:type, ident)
   return col('.') - len(ident) - 1
 endfunction
 
-function! s:load_python_script()
+function! python_ftplugin#get_modules() " {{{2
+  if empty(s:module_completion_cache)
+    let starttime = xolox#misc#timer#start()
+    call s:load_python_script()
+    redir => listing
+    silent python complete_modules()
+    redir END
+    let num_modules = 0
+    for line in split(listing, '\n')
+      let node = s:module_completion_cache
+      for token in split(line, '\.')
+        if !has_key(node, token)
+          let node[token] = {}
+        endif
+        let temp = node[token]
+        let node = temp
+      endfor
+      let num_modules += 1
+    endfor
+    call xolox#misc#timer#stop("python.vim %s: Found %i module names in %s.", g:python_ftplugin_version, num_modules, starttime)
+  endif
+  return s:module_completion_cache
+endfunction
+
+let s:module_completion_cache = {}
+
+function! s:load_python_script() " {{{2
   if !exists('s:python_script_loaded')
     python import vim
     let scriptfile = s:profile_dir . '/misc/python-ftplugin/support.py'
@@ -160,29 +191,58 @@ endfunction
 
 function! python_ftplugin#complete_variables(findstart, base) " {{{1
   if a:findstart
-    return s:find_start()
+    return s:find_start('variable')
   else
+    let starttime = xolox#misc#timer#start()
     call s:load_python_script()
     redir => listing
     silent python complete_variables(vim.eval('a:base'))
     redir END
-    let variables = split(listing, '\n')
-    let pattern = '^' . xolox#misc#escape#pattern(a:base)
-    return filter(variables, 'v:val =~ pattern')
+    let candidates = s:add_modules(a:base, split(listing, '\n'))
+    call xolox#misc#timer#stop("python.vim %s: Found %s completion candidates in %s.", g:python_ftplugin_version, len(candidates), starttime)
+    return candidates
   endif
 endfunction
 
+function! s:add_modules(base, candidates)
+  let [todo, done, node] = s:find_module(a:base)
+  for key in keys(node)
+    call add(a:candidates, join(done + [key], '.'))
+  endfor
+  let pattern = '^' . xolox#misc#escape#pattern(a:base)
+  call filter(a:candidates, 'v:val =~# pattern')
+  return sort(a:candidates, 's:friendly_sort')
+endfunction
+
+function! s:friendly_sort(a, b)
+  let a = substitute(a:a, '_', '', 'g')
+  let b = substitute(a:b, '_', '', 'g')
+  return a < b ? -1 : a > b ? 1 : 0
+endfunction
+
 function! python_ftplugin#auto_complete(chr) " {{{1
-  if (a:chr == ' ' || a:chr == '.')
+  if a:chr == ' '
           \ && xolox#misc#option#get('python_auto_complete_modules', 1)
-          \ && search('\<\(from\|import\)\(\s\+\S\+\)\?\%#', 'bc', line('.'))
+          \ && search('\<\(from\|import\)\s*\%#', 'bc', line('.'))
+    " Automatic completion of module names after `import ' and `from '.
+    let type = 'module'
     let result = "\<C-x>\<C-u>\<C-n>"
   elseif a:chr == '.'
           \ && xolox#misc#option#get('python_auto_complete_variables', 0)
           \ && search('[A-Za-z0-9_]\%#', 'bc', line('.'))
+    " Automatic completion of canonical variable names after typing a dot.
+    let type = 'variable'
     let result = "\<C-x>\<C-o>\<C-n>"
+  elseif a:chr == '.'
+          \ && xolox#misc#option#get('python_auto_complete_modules', 1)
+          \ && search('[A-Za-z0-9_]\%#', 'bc', line('.'))
+    " Automatic completion of canonical module names after typing a dot,
+    " only when variable name completion is not available.
+    let type = 'module'
+    let result = "\<C-x>\<C-u>\<C-n>"
   endif
   if exists('result')
+    call xolox#misc#msg#debug("python.vim %s: %s %s completion.", g:python_ftplugin_version, pumvisible() ? "Continuing" : "Starting", type)
     " Make sure Vim opens the menu but doesn't enter the first match.
     let b:python_cot_save = &completeopt
     set cot+=menu cot+=menuone cot+=longest
