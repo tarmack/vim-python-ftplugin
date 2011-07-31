@@ -5,7 +5,7 @@
 " Last Change: July 31, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin_version = '0.5.3'
+let g:python_ftplugin_version = '0.5.4'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -138,7 +138,7 @@ function! python_ftplugin#complete_modules(findstart, base) " {{{1
       let s:modulenames = split(listing, '\n')
       call xolox#misc#timer#stop("python.vim %s: Found %i module names in %s.", g:python_ftplugin_version, len(s:modulenames), starttime)
     endif
-    let pattern = '^' . a:base
+    let pattern = '^' . xolox#misc#escape#pattern(a:base)
     return filter(copy(s:modulenames), 'v:val =~ pattern')
   endif
 endfunction
@@ -167,26 +167,25 @@ function! python_ftplugin#complete_variables(findstart, base) " {{{1
     silent python complete_variables(vim.eval('a:base'))
     redir END
     let variables = split(listing, '\n')
-    let pattern = '^' . a:base
+    let pattern = '^' . xolox#misc#escape#pattern(a:base)
     return filter(variables, 'v:val =~ pattern')
   endif
 endfunction
 
 function! python_ftplugin#auto_complete(chr) " {{{1
-  if a:chr == ' ' && xolox#misc#option#get('python_auto_complete_modules', 1)
-          \ && search('\<\(from\|import\)\%#', 'bc', line('.'))
+  if (a:chr == ' ' || a:chr == '.')
+          \ && xolox#misc#option#get('python_auto_complete_modules', 1)
+          \ && search('\<\(from\|import\)\(\s\+\S\+\)\?\%#', 'bc', line('.'))
     let result = "\<C-x>\<C-u>\<Down>"
-  elseif a:chr == '.' && xolox#misc#option#get('python_auto_complete_variables', 0)
+  elseif a:chr == '.'
+          \ && xolox#misc#option#get('python_auto_complete_variables', 0)
           \ && search('[A-Za-z0-9_]\%#', 'bc', line('.'))
-          \ && !(pumvisible() && getline('.') =~ '\<import\>')
-    " The last condition ensures that variable completion doesn't trigger when
-    " we are currently inside module name completion.
     let result = "\<C-x>\<C-o>\<Down>"
   endif
   if exists('result')
     " Make sure Vim opens the menu but doesn't enter the first match.
     let b:python_cot_save = &completeopt
-    set completeopt+=menu,menuone,longest
+    set cot+=menu cot+=menuone cot+=longest
     " Restore &completeopt after completion.
     augroup PluginFileTypePython
       autocmd! CursorHold,CursorHoldI <buffer> call s:restore_completeopt()
