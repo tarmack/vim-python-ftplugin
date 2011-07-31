@@ -77,7 +77,11 @@ def load_module(todo, done):
   while todo:
     path.append(todo[0])
     try:
-      module = __import__('.'.join(path))
+      temp = __import__('.'.join(path))
+      if temp.__name__ == '.'.join(path):
+        module = temp
+      else:
+        break
     except ImportError:
       break
     done.append(todo.pop(0))
