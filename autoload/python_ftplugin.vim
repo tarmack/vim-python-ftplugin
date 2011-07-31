@@ -156,13 +156,15 @@ endfunction
 
 function! python_ftplugin#get_modules() " {{{2
   if empty(s:module_completion_cache)
-    let starttime = xolox#misc#timer#start()
+    let start_load = xolox#misc#timer#start()
     call s:load_python_script()
     redir => listing
     silent python complete_modules()
     redir END
-    let num_modules = 0
-    for line in split(listing, '\n')
+    let lines = split(listing, '\n')
+    call xolox#misc#timer#stop("python.vim %s: Found %i module names in %s.", g:python_ftplugin_version, len(lines), start_load)
+    let start_tree = xolox#misc#timer#start()
+    for line in lines
       let node = s:module_completion_cache
       for token in split(line, '\.')
         if !has_key(node, token)
@@ -171,9 +173,8 @@ function! python_ftplugin#get_modules() " {{{2
         let temp = node[token]
         let node = temp
       endfor
-      let num_modules += 1
     endfor
-    call xolox#misc#timer#stop("python.vim %s: Found %i module names in %s.", g:python_ftplugin_version, num_modules, starttime)
+    call xolox#misc#timer#stop("python.vim %s: Build tree of module names in %s.", g:python_ftplugin_version, start_tree)
   endif
   return s:module_completion_cache
 endfunction
