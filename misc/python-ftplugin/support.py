@@ -12,6 +12,12 @@ import sys
 
 def complete_modules():
 
+  '''
+  Find the names of the built-in, binary and source modules available on the
+  user's system without executing any Python code except for this function (in
+  other words, module name completion is completely safe).
+  '''
+
   # Start with the names of the built-in modules.
   modulenames = set(sys.builtin_module_names)
 
@@ -50,6 +56,10 @@ def complete_modules():
     print modname
 
 def complete_variables(expr):
+  '''
+  Use __import__() and dir() to get the functions and/or variables available in
+  the given module or submodule.
+  '''
   path = expr.split('.')
   module = load_module(path)
   if module:
@@ -57,7 +67,11 @@ def complete_variables(expr):
       print '.'.join(path + [entry])
 
 def load_module(path):
-  while path:
+  '''
+  Find the most specific valid Python module given a tokenized identifier
+  expression (e.g. `os.path' for `os.path.islink').
+  '''
+  while  path:
     try:
       return __import__('.'.join(path))
     except ImportError:
@@ -65,13 +79,21 @@ def load_module(path):
         path.pop()
 
 def find_module_path(name):
+  '''
+  Look for a Python module on the module search path (used for "gf" and
+  searching in imported modules).
+  '''
   fname = name.replace('.', '/')
   for directory in sys.path:
     scriptfile = directory + '/' + fname + '.py'
     if os.path.isfile(scriptfile):
       print scriptfile
+      break
 
 def friendly_sort(identifiers):
+  '''
+  Sort identifiers ignoring case and underscores (human friendly sorting).
+  '''
   identifiers.sort(key=lambda n: n.lower().replace('_', ''))
   return identifiers
 
