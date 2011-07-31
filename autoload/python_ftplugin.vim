@@ -2,10 +2,10 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart kroon <bart@tarmack.eu>
-" Last Change: July 31, 2011
+" Last Change: August 1, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin_version = '0.5.4'
+let g:python_ftplugin_version = '0.5.5'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -176,11 +176,11 @@ function! python_ftplugin#auto_complete(chr) " {{{1
   if (a:chr == ' ' || a:chr == '.')
           \ && xolox#misc#option#get('python_auto_complete_modules', 1)
           \ && search('\<\(from\|import\)\(\s\+\S\+\)\?\%#', 'bc', line('.'))
-    let result = "\<C-x>\<C-u>\<Down>"
+    let result = "\<C-x>\<C-u>\<C-n>"
   elseif a:chr == '.'
           \ && xolox#misc#option#get('python_auto_complete_variables', 0)
           \ && search('[A-Za-z0-9_]\%#', 'bc', line('.'))
-    let result = "\<C-x>\<C-o>\<Down>"
+    let result = "\<C-x>\<C-o>\<C-n>"
   endif
   if exists('result')
     " Make sure Vim opens the menu but doesn't enter the first match.
