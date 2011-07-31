@@ -60,7 +60,7 @@ def complete_variables(expr):
   Use __import__() and dir() to get the functions and/or variables available in
   the given module or submodule.
   '''
-  path = expr.split('.')
+  path = [x for x in expr.split('.') if x]
   module = load_module(path)
   if module:
     for entry in friendly_sort(dir(module)):
