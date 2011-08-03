@@ -34,13 +34,14 @@ def complete_modules():
     print modname
 
 def scan_modules(directory, expr, modulenames):
+  sharedext = platform.system() == 'Windows' and '.dll' or '.so'
   if os.path.isdir(directory):
     for name in os.listdir(directory):
       pathname = '%s/%s' % (directory, name)
       if os.path.isdir(pathname):
         if re.match('^[A-Za-z0-9_]+$', name):
           scan_modules(pathname, expr and expr + '.' + name or name, modulenames)
-      elif re.search(r'^[A-Za-z0-9_]+\.py[co]?$', name):
+      elif re.search(r'^[A-Za-z0-9_]+(\.py[co]?|%s)$' % sharedext, name):
         name = os.path.splitext(name)[0]
         if expr:
           name = expr if name == '__init__' else expr + '.' + name
