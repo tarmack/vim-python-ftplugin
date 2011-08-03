@@ -9,7 +9,7 @@ The Python file type plug-in for Vim helps you while developing in Python by pro
  * Control-X Control-U completes all available module names.
    * Module name completion starts automatically after typing `import` or `from` (automatic completion can be disabled if you find it is too intrusive).
  * Control-X Control-O completes variable names, for example after `os` or `os.` it would complete `os.path` (and others). *Be aware that this imports modules to perform introspection and assumes that importing a module does not have serious side effects (although it might, however it shouldn't).*
-   * You can enable automatic variable completion after typing a dot (*this is not enabled by default because of the side effect issue mentioned above*).
+   * You can enable automatic variable completion after typing a dot or if you type a space after `import` on a `from <module> import <variable>` line. (*this is not enabled by default because of the side effect issue mentioned above*).
 
 ## Installation
 
@@ -59,7 +59,7 @@ Controls automatic completion of module names after typing `import<Space>` or `f
 
 ### The `g:python_auto_complete_variables` option
 
-Controls automatic completion of variables after typing a dot. Disabled by default.
+Controls automatic completion of variables after typing a dot or `from <module> import<Space>`. Disabled by default.
 
 ## Contact
 
@@ -67,7 +67,7 @@ If you have questions, bug reports, suggestions, etc. you can contact Bart at <b
 
 ## License
 
-This software is licensed under the [MIT license](http://en.wikipedia.org/wiki/MIT_License).  
+This software is licensed under the [MIT license](http://en.wikipedia.org/wiki/MIT_License).
 © 2011 Peter Odding &lt;<peter@peterodding.com>&gt; and Bart Kroon &lt;<bart@tarmack.eu>&gt;.
 
 

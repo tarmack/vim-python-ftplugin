@@ -5,7 +5,7 @@
 " Last Change: July 31, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin_version = '0.5.6'
+let g:python_ftplugin_version = '0.5.7'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -135,15 +135,28 @@ function! python_ftplugin#complete_modules(findstart, base) " {{{1
   endif
 endfunction
 
-function! s:find_module(base)
-  let todo = split(a:base, '\.')
+function! s:find_module(base) " {{{1
+  let todo = []
+  let fromstr = matchstr(getline('.'), '\<\(from\s\+\)\@<=[A-Za-z0-9_.]\+\(\s\+import\([A-Za-z0-9_,]\s*\)*\)\@=')
+  let from = split(fromstr, '\.')
+  if !empty(from)
+    call extend(todo, from)
+  endif
+  call extend(todo, split(a:base, '\.'))
   let done = []
   let node = python_ftplugin#get_modules()
   while !empty(todo) && has_key(node, todo[0])
     let name = remove(todo, 0)
     let node = node[name]
-    call add(done, name)
+    if !empty(from)
+      call remove(from, 0)
+    else
+      call add(done, name)
+    endif
   endwhile
+  if !empty(from)
+    let node = {}
+  endif
   return [todo, done, node]
 endfunction
 
@@ -157,6 +170,7 @@ endfunction
 function! python_ftplugin#get_modules() " {{{2
   if empty(s:module_completion_cache)
     let start_load = xolox#misc#timer#start()
+    call xolox#misc#msg#info("python.vim %s: Caching list of installed Python modules ..", g:python_ftplugin_version)
     call s:load_python_script()
     redir => listing
     silent python complete_modules()
@@ -195,49 +209,56 @@ function! python_ftplugin#complete_variables(findstart, base) " {{{1
     return s:find_start('variable')
   else
     let starttime = xolox#misc#timer#start()
-    call s:load_python_script()
-    redir => listing
-    silent python complete_variables(vim.eval('a:base'))
-    redir END
-    let candidates = s:add_modules(a:base, split(listing, '\n'))
+    let candidates = []
+    if s:do_variable_completion(a:base[-1:])
+      let from = matchstr(getline('.'), '\<\(from\s\+\)\@<=[A-Za-z0-9_.]\+\(\s\+import\s\+\([A-Za-z0-9_,]\s*\)*\)\@=')
+      if empty(from)
+        let base = a:base
+      else
+        let base = from . '.' . a:base
+      endif
+      call s:load_python_script()
+      redir => listing
+      silent python complete_variables(vim.eval('base'))
+      redir END
+      call extend(candidates, split(listing, '\n'))
+      if !empty(from)
+        call map(candidates, 'v:val[len(from) + 1 :]')
+      endif
+    endif
+    let candidates = s:add_modules(a:base, candidates)
     call xolox#misc#timer#stop("python.vim %s: Found %s completion candidates in %s.", g:python_ftplugin_version, len(candidates), starttime)
     return candidates
   endif
 endfunction
 
-function! s:add_modules(base, candidates)
-  let [todo, done, node] = s:find_module(a:base)
-  for key in keys(node)
-    call add(a:candidates, join(done + [key], '.'))
-  endfor
-  let pattern = '^' . xolox#misc#escape#pattern(a:base)
-  call filter(a:candidates, 'v:val =~# pattern')
+function! s:add_modules(base, candidates) " {{{1
+  if s:do_module_completion(a:base[-1:])
+    let [todo, done, node] = s:find_module(a:base)
+    for key in keys(node)
+      call add(a:candidates, join(done + [key], '.'))
+    endfor
+    let pattern = '^' . xolox#misc#escape#pattern(a:base)
+    call filter(a:candidates, 'v:val =~# pattern')
+  endif
   return sort(a:candidates, 's:friendly_sort')
 endfunction
 
-function! s:friendly_sort(a, b)
+function! s:friendly_sort(a, b) " {{{1
   let a = substitute(a:a, '_', '', 'g')
   let b = substitute(a:b, '_', '', 'g')
   return a < b ? -1 : a > b ? 1 : 0
 endfunction
 
 function! python_ftplugin#auto_complete(chr) " {{{1
-  if a:chr == ' '
-          \ && xolox#misc#option#get('python_auto_complete_modules', 1)
-          \ && search('\<\(from\|import\)\s*\%#', 'bc', line('.'))
-    " Automatic completion of module names after `import ' and `from '.
-    let type = 'module'
-    let result = "\<C-x>\<C-u>\<C-n>"
-  elseif a:chr == '.'
-          \ && xolox#misc#option#get('python_auto_complete_variables', 0)
-          \ && search('[A-Za-z0-9_]\%#', 'bc', line('.'))
-    " Automatic completion of canonical variable names after typing a dot.
+  if xolox#misc#option#get('python_auto_complete_variables', 0)
+        \ && s:do_variable_completion(a:chr)
+    " Automatic completion of canonical variable names.
     let type = 'variable'
     let result = "\<C-x>\<C-o>\<C-n>"
-  elseif a:chr == '.'
-          \ && xolox#misc#option#get('python_auto_complete_modules', 1)
-          \ && search('[A-Za-z0-9_]\%#', 'bc', line('.'))
-    " Automatic completion of canonical module names after typing a dot,
+  elseif xolox#misc#option#get('python_auto_complete_modules', 1)
+        \ && s:do_module_completion(a:chr)
+    " Automatic completion of canonical module names,
     " only when variable name completion is not available.
     let type = 'module'
     let result = "\<C-x>\<C-u>\<C-n>"
@@ -257,7 +278,55 @@ function! python_ftplugin#auto_complete(chr) " {{{1
   return a:chr
 endfunction
 
-function! s:restore_completeopt()
+function! s:do_module_completion(chr) " {{{1
+  " Complete module names when at the end of a from XX import YY line.
+  " But do check for comma separators.
+  if search('\<from\s\+[A-Za-z0-9_.]\+\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\%#', 'bcn', line('.'))
+    if a:chr == ' ' && !search('\(\<import\|,\)\s*\%#', 'bcn', line('.'))
+      return 0
+    elseif a:chr == '.'
+      return 0
+    endif
+    return 1
+
+  elseif search('\<from\s*\(\s\+[A-Za-z0-9_.]*\s\@!\)\=\%#', 'bcn', line('.'))
+    if a:chr == ' ' && search('\<from\s\+[A-Za-z0-9_.]\+\s*\%#', 'bcn', line('.'))
+      return 0
+    endif
+    return 1
+
+  elseif search('\<import\s*\(\s\+[A-Za-z0-9_.]*\s*,\)*\s*[A-Za-z0-9_.]*\s\@!\%#', 'bcn', line('.'))
+        \ && !search('\<from.\{-}import.\{-}\%#', 'bcn', line('.'))
+    if a:chr == ' ' && !search('\(import\|,\)\s*\%#', 'bcn', line('.'))
+      return 0
+    endif
+    return 1
+  endif
+  return 0
+endfunction
+
+function! s:do_variable_completion(chr) " {{{1
+  if search('\<from\s\+[A-Za-z0-9_.]\+\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\%#', 'bcn', line('.'))
+    " TODO Forbid point after import on from XX import YY.
+    if a:chr == ' ' && !search('\(\<import\|,\)\s*\%#', 'bcn', line('.'))
+      return 0
+    elseif a:chr == '.'
+      return 0
+    endif
+    return 1
+
+  elseif a:chr != ' '
+        \ && search('\<from\@!.\{-}import\s\+[A-Za-z0-9_.].\@!\%#', 'bcn', line('.'))
+        \ && search('\<\(from\|import\)\s*[A-Za-z0-9_.]*\s\@!\%#', 'bcn', line('.')) 
+    return 1
+  elseif a:chr != ' '
+        \ && search('\<from\s\+[A-Za-z0-9_.]\+\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\s\@!\%#', 'bcn', line('.'))
+    return 1
+  endif
+  return 0
+endfunction
+
+function! s:restore_completeopt() " {{{1
   " Restore the original value of &completeopt.
   if exists('b:python_cot_save')
     let &completeopt = b:python_cot_save
