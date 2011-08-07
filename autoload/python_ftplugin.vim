@@ -155,7 +155,7 @@ function! s:find_module(base) " {{{1
   if len(from) > len(done)
     let node = {}
   endif
-    let done = done[len(done) :]
+    let done = done[len(from) :]
   return [todo, done, node]
 endfunction
 
