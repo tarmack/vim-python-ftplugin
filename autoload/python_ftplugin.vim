@@ -5,7 +5,7 @@
 " Last Change: August 7, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin_version = '0.5.9'
+let g:python_ftplugin_version = '0.5.10'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -295,7 +295,7 @@ function! s:do_module_completion(chr) " {{{1
     endif
     return 1
   endif
-  return 0
+  return 1
 endfunction
 
 function! s:do_variable_completion(chr) " {{{1
@@ -314,8 +314,11 @@ function! s:do_variable_completion(chr) " {{{1
   elseif a:chr != ' '
         \ && search('\<from\s\+[A-Za-z0-9_.]\+\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\s\@!\%#', 'bcn', line('.'))
     return 1
+
+  elseif search('\<\(from\|import\).*\%#', 'bcn', line('.'))
+    return 0
   endif
-  return 0
+  return 1
 endfunction
 
 function! s:restore_completeopt() " {{{1
