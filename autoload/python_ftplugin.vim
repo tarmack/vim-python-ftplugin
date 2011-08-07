@@ -2,10 +2,10 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart kroon <bart@tarmack.eu>
-" Last Change: July 31, 2011
+" Last Change: August 7, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin_version = '0.5.8'
+let g:python_ftplugin_version = '0.5.9'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -139,24 +139,23 @@ function! s:find_module(base) " {{{1
   let todo = []
   let fromstr = matchstr(getline('.'), '\<\(from\s\+\)\@<=[A-Za-z0-9_.]\+\(\s\+import\([A-Za-z0-9_,]\s*\)*\)\@=')
   let from = split(fromstr, '\.')
-  if !empty(from)
-    call extend(todo, from)
-  endif
+  call extend(todo, from)
   call extend(todo, split(a:base, '\.'))
   let done = []
-  let node = python_ftplugin#get_modules()
-  while !empty(todo) && has_key(node, todo[0])
-    let name = remove(todo, 0)
-    let node = node[name]
-    if !empty(from)
-      call remove(from, 0)
-    else
+  let node = python_ftplugin#get_modules([], s:module_completion_cache)
+  while !empty(todo)
+    if has_key(node, todo[0])
+      let name = remove(todo, 0)
       call add(done, name)
+      let node = python_ftplugin#get_modules(done, node[name])
+    else
+      break
     endif
   endwhile
-  if !empty(from)
+  if len(from) > len(done)
     let node = {}
   endif
+    let done = done[len(done) :]
   return [todo, done, node]
 endfunction
 
@@ -167,30 +166,24 @@ function! s:find_start(type) " {{{2
   return col('.') - len(ident) - 1
 endfunction
 
-function! python_ftplugin#get_modules() " {{{2
-  if empty(s:module_completion_cache)
-    let start_load = xolox#misc#timer#start()
-    call xolox#misc#msg#info("python.vim %s: Caching list of installed Python modules ..", g:python_ftplugin_version)
-    call s:load_python_script()
-    redir => listing
-    silent python complete_modules()
-    redir END
-    let lines = split(listing, '\n')
-    call xolox#misc#timer#stop("python.vim %s: Found %i module names in %s.", g:python_ftplugin_version, len(lines), start_load)
-    let start_tree = xolox#misc#timer#start()
-    for line in lines
-      let node = s:module_completion_cache
-      for token in split(line, '\.')
-        if !has_key(node, token)
-          let node[token] = {}
-        endif
-        let temp = node[token]
-        let node = temp
-      endfor
-    endfor
-    call xolox#misc#timer#stop("python.vim %s: Build tree of module names in %s.", g:python_ftplugin_version, start_tree)
-  endif
-  return s:module_completion_cache
+function! python_ftplugin#get_modules(base, node) " {{{2
+  let start_load = xolox#misc#timer#start()
+  call xolox#misc#msg#info("python.vim %s: Caching list of installed Python modules ..", g:python_ftplugin_version)
+
+  call s:load_python_script()
+  redir => listing
+  silent python complete_modules(vim.eval("join(a:base, '.')"))
+  redir END
+  let lines = split(listing, '\n')
+  call xolox#misc#timer#stop("python.vim %s: Found %i module names in %s.", g:python_ftplugin_version, len(lines), start_load)
+  let start_tree = xolox#misc#timer#start()
+  for token in lines
+    if !has_key(a:node, token)
+      let a:node[token] = {}
+    endif
+  endfor
+  call xolox#misc#timer#stop("python.vim %s: Build tree of module names in %s.", g:python_ftplugin_version, start_tree)
+  return a:node
 endfunction
 
 let s:module_completion_cache = {}
@@ -281,7 +274,7 @@ endfunction
 function! s:do_module_completion(chr) " {{{1
   " Complete module names when at the end of a from XX import YY line.
   " But do check for comma separators.
-  if search('\<from\s\+[A-Za-z0-9_.]\+\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\%#', 'bcn', line('.'))
+  if search('\<from\s\+[A-Za-z0-9_.]\+\.\@<!\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\%#', 'bcn', line('.'))
     if a:chr == ' ' && !search('\(\<import\|,\)\s*\%#', 'bcn', line('.'))
       return 0
     elseif a:chr == '.'
@@ -306,8 +299,7 @@ function! s:do_module_completion(chr) " {{{1
 endfunction
 
 function! s:do_variable_completion(chr) " {{{1
-  if search('\<from\s\+[A-Za-z0-9_.]\+\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\%#', 'bcn', line('.'))
-    " TODO Forbid point after import on from XX import YY.
+  if search('\<from\s\+[A-Za-z0-9_.]\+\.\@<!\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\%#', 'bcn', line('.'))
     if a:chr == ' ' && !search('\(\<import\|,\)\s*\%#', 'bcn', line('.'))
       return 0
     elseif a:chr == '.'

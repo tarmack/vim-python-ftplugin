@@ -2,7 +2,7 @@
 # Authors:
 #  - Peter Odding <peter@peterodding.com>
 #  - Bart kroon <bart@tarmack.eu>
-# Last Change: July 31, 2011
+# Last Change: August 7, 2011
 # URL: https://github.com/tarmack/vim-python-ftplugin
 
 import __builtin__
@@ -11,41 +11,44 @@ import platform
 import re
 import sys
 
-def complete_modules():
+def complete_modules(base):
   '''
   Find the names of the built-in, binary and source modules available on the
   user's system without executing any Python code except for this function (in
   other words, module name completion is completely safe).
   '''
   # Start with the names of the built-in modules.
-  modulenames = set(sys.builtin_module_names)
-  # Find the installed binary modules (*.so or *.dll files).
-  sharedlibs = '%s/lib/python%s/lib-dynload' % (sys.exec_prefix, sys.version[:3])
-  sharedext = platform.system() == 'Windows' and '.dll' or '.so'
-  for soname in os.listdir(sharedlibs):
-    basename, extension = os.path.splitext(soname)
-    if extension.lower() == sharedext:
-      modulenames.add(basename)
-  # Find the installed source modules (*.py, *.pyc, *.pyo files).
+  if base:
+    modulenames = set()
+  else:
+    modulenames = set(sys.builtin_module_names)
+  # Find the installed modules.
   for root in sys.path:
-    scan_modules(root, '', modulenames)
+    scan_modules(root, [x for x in base.split('.') if x], modulenames)
   # Sort the module list ignoring case and underscores.
+  if base:
+    base += '.'
   for modname in friendly_sort(list(modulenames)):
     print modname
+  #return [base + modname for modname in friendly_sort(list(modulenames))]
 
-def scan_modules(directory, expr, modulenames):
-  sharedext = platform.system() == 'Windows' and '.dll' or '.so'
-  if os.path.isdir(directory):
-    for name in os.listdir(directory):
-      pathname = '%s/%s' % (directory, name)
-      if os.path.isdir(pathname):
-        if re.match('^[A-Za-z0-9_]+$', name):
-          scan_modules(pathname, expr and expr + '.' + name or name, modulenames)
-      elif re.search(r'^[A-Za-z0-9_]+(\.py[co]?|%s)$' % sharedext, name):
-        name = os.path.splitext(name)[0]
-        if expr:
-          name = expr if name == '__init__' else expr + '.' + name
-          name = re.sub('^(dist|site)-packages.', '', name)
+def scan_modules(directory, base, modulenames):
+  sharedext = platform.system() == 'Windows' and '\.dll' or '\.so'
+  if not os.path.isdir(directory):
+    return
+  for name in os.listdir(directory):
+    pathname = '%s/%s' % (directory, name)
+    if os.path.isdir(pathname):
+      listing = os.listdir(pathname)
+      if '__init__' in [os.path.splitext(x)[0] for x in listing]:
+        if base:
+          if name == base[0]:
+            scan_modules(pathname, base[1:], modulenames)
+        else:
+          modulenames.add(name)
+    elif (not base) and re.match(r'^[A-Za-z0-9_]+(\.py[co]?|%s)$' % sharedext, name):
+      name = os.path.splitext(name)[0]
+      if name != '__init__':
         modulenames.add(name)
 
 def complete_variables(expr):
