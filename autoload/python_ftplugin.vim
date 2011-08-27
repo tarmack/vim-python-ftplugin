@@ -2,10 +2,10 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart kroon <bart@tarmack.eu>
-" Last Change: August 7, 2011
+" Last Change: August 27, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin_version = '0.5.10'
+let g:python_ftplugin_version = '0.5.11'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -272,50 +272,68 @@ function! python_ftplugin#auto_complete(chr) " {{{1
 endfunction
 
 function! s:do_module_completion(chr) " {{{1
+  let chr = a:chr
+  if chr == ''
+    let chr = ' '
+  endif
+  " Do not complete when typing a comment.
+  if search('#.*\%#', 'bcn', line('.'))
+    return 0
   " Complete module names when at the end of a from XX import YY line.
   " But do check for comma separators.
-  if search('\<from\s\+[A-Za-z0-9_.]\+\.\@<!\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\%#', 'bcn', line('.'))
-    if a:chr == ' ' && !search('\(\<import\|,\)\s*\%#', 'bcn', line('.'))
+  elseif search('\<from\s\+[A-Za-z0-9_.]\+\.\@<!\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\%#', 'bcn', line('.'))
+    if chr == ' ' && !search('\(\<import\|,\)\s*\%#', 'bcn', line('.'))
       return 0
-    elseif a:chr == '.'
+    elseif chr == '.'
       return 0
     endif
     return 1
 
   elseif search('\<from\s*\(\s\+[A-Za-z0-9_.]*\s\@!\)\=\%#', 'bcn', line('.'))
-    if a:chr == ' ' && search('\<from\s\+[A-Za-z0-9_.]\+\s*\%#', 'bcn', line('.'))
+    if chr == ' ' && search('\<from\s\+[A-Za-z0-9_.]\+\s*\%#', 'bcn', line('.'))
       return 0
     endif
     return 1
 
   elseif search('\<import\s*\(\s\+[A-Za-z0-9_.]*\s*,\)*\s*[A-Za-z0-9_.]*\s\@!\%#', 'bcn', line('.'))
         \ && !search('\<from.\{-}import.\{-}\%#', 'bcn', line('.'))
-    if a:chr == ' ' && !search('\(import\|,\)\s*\%#', 'bcn', line('.'))
+    if chr == ' ' && !search('\(import\|,\)\s*\%#', 'bcn', line('.'))
       return 0
     endif
     return 1
+  elseif chr == ' ' && !search('\(\<import\|\<import.\{-},\)\s*\%#', 'bcn', line('.'))
+    return 0
   endif
   return 1
 endfunction
 
 function! s:do_variable_completion(chr) " {{{1
-  if search('\<from\s\+[A-Za-z0-9_.]\+\.\@<!\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\%#', 'bcn', line('.'))
-    if a:chr == ' ' && !search('\(\<import\|,\)\s*\%#', 'bcn', line('.'))
+  let chr = a:chr
+  if chr == ''
+    let chr = ' '
+  endif
+  " Do not complete when typing a comment.
+  if search('#.*\%#', 'bcn', line('.'))
+    return 0
+  elseif search('\<from\s\+[A-Za-z0-9_.]\+\.\@<!\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\%#', 'bcn', line('.'))
+    if chr == ' ' && !search('\(\<import\|,\)\s*\%#', 'bcn', line('.'))
       return 0
-    elseif a:chr == '.'
+    elseif chr == '.'
       return 0
     endif
     return 1
 
-  elseif a:chr != ' '
+  elseif chr != ' '
         \ && search('\<from\@!.\{-}import\s\+[A-Za-z0-9_.].\@!\%#', 'bcn', line('.'))
         \ && search('\<\(from\|import\)\s*[A-Za-z0-9_.]*\s\@!\%#', 'bcn', line('.')) 
     return 1
-  elseif a:chr != ' '
+  elseif chr != ' '
         \ && search('\<from\s\+[A-Za-z0-9_.]\+\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\s\@!\%#', 'bcn', line('.'))
     return 1
 
   elseif search('\<\(from\|import\).*\%#', 'bcn', line('.'))
+    return 0
+  elseif chr == ' ' && !search('\(\<import\|\<import.\{-},\)\s*\%#', 'bcn', line('.'))
     return 0
   endif
   return 1
