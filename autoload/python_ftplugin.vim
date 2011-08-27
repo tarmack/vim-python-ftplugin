@@ -2,10 +2,10 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart kroon <bart@tarmack.eu>
-" Last Change: August 27, 2011
+" Last Change: August 28, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin_version = '0.5.11'
+let g:python_ftplugin_version = '0.5.12'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -135,15 +135,26 @@ function! python_ftplugin#complete_modules(findstart, base) " {{{1
   endif
 endfunction
 
-function! s:find_module(base) " {{{1
+function! s:find_modules(base) " {{{1
+  let start_load = xolox#misc#timer#start()
   let todo = []
   let fromstr = matchstr(getline('.'), '\<\(from\s\+\)\@<=[A-Za-z0-9_.]\+\(\s\+import\([A-Za-z0-9_,]\s*\)*\)\@=')
   let from = split(fromstr, '\.')
   call extend(todo, from)
   call extend(todo, split(a:base, '\.'))
   let done = []
+  let items = []
   let node = python_ftplugin#get_modules([], s:module_completion_cache)
   while !empty(todo)
+    if len(todo) == 1
+      " Include items from the containing node that start with the last item.
+      let keys = keys(node)
+      let pattern = '^' . xolox#misc#escape#pattern(todo[0])
+      call filter(keys, "v:val =~# pattern")
+      for key in keys
+        call add(items, join(done + [key], '.'))
+      endfor
+    endif
     if has_key(node, todo[0])
       let name = remove(todo, 0)
       call add(done, name)
@@ -155,8 +166,13 @@ function! s:find_module(base) " {{{1
   if len(from) > len(done)
     let node = {}
   endif
-    let done = done[len(from) :]
-  return [todo, done, node]
+  let done = done[len(from) :]
+  let keys = keys(node)
+  for key in keys
+    call add(items, join(done + [key], '.'))
+  endfor
+  call xolox#misc#timer#stop("python.vim %s: Found %i module names in %s.", g:python_ftplugin_version, len(items), start_load)
+  return items
 endfunction
 
 function! s:find_start(type) " {{{2
@@ -167,22 +183,21 @@ function! s:find_start(type) " {{{2
 endfunction
 
 function! python_ftplugin#get_modules(base, node) " {{{2
-  let start_load = xolox#misc#timer#start()
-  call xolox#misc#msg#info("python.vim %s: Caching list of installed Python modules ..", g:python_ftplugin_version)
-
-  call s:load_python_script()
-  redir => listing
-  silent python complete_modules(vim.eval("join(a:base, '.')"))
-  redir END
-  let lines = split(listing, '\n')
-  call xolox#misc#timer#stop("python.vim %s: Found %i module names in %s.", g:python_ftplugin_version, len(lines), start_load)
-  let start_tree = xolox#misc#timer#start()
-  for token in lines
-    if !has_key(a:node, token)
-      let a:node[token] = {}
-    endif
-  endfor
-  call xolox#misc#timer#stop("python.vim %s: Build tree of module names in %s.", g:python_ftplugin_version, start_tree)
+  if empty(s:module_completion_cache)
+    call xolox#misc#msg#info("python.vim %s: Caching top level Python modules ..", g:python_ftplugin_version)
+  endif
+  if empty(a:node)
+    call s:load_python_script()
+    redir => listing
+    silent python complete_modules(vim.eval("join(a:base, '.')"))
+    redir END
+    let lines = split(listing, '\n')
+    for token in lines
+      if !has_key(a:node, token)
+        let a:node[token] = {}
+      endif
+    endfor
+  endif
   return a:node
 endfunction
 
@@ -217,6 +232,8 @@ function! python_ftplugin#complete_variables(findstart, base) " {{{1
       call extend(candidates, split(listing, '\n'))
       if !empty(from)
         call map(candidates, 'v:val[len(from) + 1 :]')
+        let pattern = '^' . xolox#misc#escape#pattern(a:base) . '\.'
+        call filter(candidates, 'v:val !~ pattern')
       endif
     endif
     let candidates = s:add_modules(a:base, candidates)
@@ -227,12 +244,11 @@ endfunction
 
 function! s:add_modules(base, candidates) " {{{1
   if s:do_module_completion(a:base[-1:])
-    let [todo, done, node] = s:find_module(a:base)
-    for key in keys(node)
-      call add(a:candidates, join(done + [key], '.'))
-    endfor
+    call extend(a:candidates, s:find_modules(a:base))
     let pattern = '^' . xolox#misc#escape#pattern(a:base)
     call filter(a:candidates, 'v:val =~# pattern')
+    let pattern = pattern . '\.'
+    call filter(a:candidates, 'v:val !~ pattern')
   endif
   return sort(a:candidates, 's:friendly_sort')
 endfunction

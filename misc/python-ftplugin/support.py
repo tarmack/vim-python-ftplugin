@@ -58,9 +58,15 @@ def complete_variables(expr):
   '''
   todo = [x for x in expr.split('.') if x]
   done = []
+  attributes = []
   module = load_module(todo, done)
   subject = module
   while todo:
+    if len(todo) == 1:
+      attributes = [attr for attr in dir(subject) if attr.startswith(todo[0])]
+      expr = ('.'.join(done) + '.') if done else ''
+      for attr in attributes:
+        print expr + attr
     try:
       subject = getattr(subject, todo[0])
       done.append(todo.pop(0))
