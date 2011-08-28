@@ -5,7 +5,7 @@
 " Last Change: August 28, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin_version = '0.5.12'
+let g:python_ftplugin_version = '0.5.13'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -19,6 +19,25 @@ function! python_ftplugin#fold_text() " {{{1
   else
     let text = []
     let lnum = v:foldstart
+
+    " Prepend decorator names to foldtext.
+    while line =~ '^\s*@'
+      " If there are multiple decorators separate them with commas.
+      if !empty(text)
+        let text[-1] = text[-1] . ","
+      endif
+      if xolox#misc#option#get('python_decorators_in_foldtext', 1)
+        let decorator = matchstr(line, '@[A-Za-z0-9_]*')
+        let decorator_labels = xolox#misc#option#get('python_decorator_labels', {})
+        if has_key(decorator_labels, decorator[1:])
+          let decorator = '@' . decorator_labels[decorator[1:]]
+        endif
+        call add(text, decorator)
+      endif
+      let lnum += 1
+      let line = getline(lnum)
+    endwhile
+    
     if line =~ '^\s*\(def\|class\)\>'
       " Class or function body.
       let line = xolox#misc#str#trim(line)
