@@ -49,6 +49,14 @@ Enables syntax based folding for strings that span multiple lines.
 
 To display the docstring of a class/function in the fold text.
 
+### The `g:python_decorators_in_foldtext` option
+
+To display the decorators in the fold text. Currently arguments to decorators are not shown.
+
+### The `g:python_decorator_labels` option
+
+This is a dictionary mapping decorator names to short labels. By default it is empty.
+
 ### The `g:python_check_syntax` option
 
 Enables automatic syntax checking when saving Python buffers. This uses [pyflakes] [pyflakes] when available but falls back on the standard Python compiler for syntax checking.
