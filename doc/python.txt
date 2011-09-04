@@ -22,8 +22,10 @@ providing the following features:
    modules to perform introspection and assumes that importing a module does
    not have serious side effects (although it might, however it shouldn't).
 
- - You can enable automatic variable completion after typing a dot (this is not
-   enabled by default because of the side effect issue mentioned above).
+ - You can enable automatic variable completion after typing a dot or if you
+   type a space after 'import' on a 'from <module> import <variable>' line.
+   (this is not enabled by default because of the side effect issue mentioned
+   above).
 
 ===============================================================================
                                                            *python-installation*
@@ -75,6 +77,18 @@ The *g:python_docstring_in_foldtext* option
 To display the docstring of a class/function in the fold text.
 
 -------------------------------------------------------------------------------
+The *g:python_decorators_in_foldtext* option
+
+To display the decorators in the fold text. Currently arguments to decorators
+are not shown.
+
+-------------------------------------------------------------------------------
+The *g:python_decorator_labels* option
+
+This is a dictionary mapping decorator names to short labels. By default it is
+empty.
+
+-------------------------------------------------------------------------------
 The *g:python_check_syntax* option
 
 Enables automatic syntax checking when saving Python buffers. This uses
@@ -90,8 +104,8 @@ Controls automatic completion of module names after typing 'import<Space>' or
 -------------------------------------------------------------------------------
 The *g:python_auto_complete_variables* option
 
-Controls automatic completion of variables after typing a dot. Disabled by
-default.
+Controls automatic completion of variables after typing a dot or 'from
+<module> import<Space>'. Disabled by default.
 
 ===============================================================================
                                                                 *python-contact*
