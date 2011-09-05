@@ -2,10 +2,10 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart kroon <bart@tarmack.eu>
-" Last Change: September 5, 2011
+" Last Change: September 6, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin#version = '0.5.16'
+let g:python_ftplugin#version = '0.5.17'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -273,8 +273,8 @@ function! s:add_modules(base, candidates) " {{{1
 endfunction
 
 function! s:friendly_sort(a, b) " {{{1
-  let a = substitute(a:a, '_', '', 'g')
-  let b = substitute(a:b, '_', '', 'g')
+  let a = substitute(tolower(a:a), '_', '\~', 'g')
+  let b = substitute(tolower(a:b), '_', '\~', 'g')
   return a < b ? -1 : a > b ? 1 : 0
 endfunction
 

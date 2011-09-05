@@ -2,7 +2,7 @@
 # Authors:
 #  - Peter Odding <peter@peterodding.com>
 #  - Bart kroon <bart@tarmack.eu>
-# Last Change: August 7, 2011
+# Last Change: September 6, 2011
 # URL: https://github.com/tarmack/vim-python-ftplugin
 
 import __builtin__
@@ -111,9 +111,9 @@ def find_module_path(name):
 
 def friendly_sort(identifiers):
   '''
-  Sort identifiers ignoring case and underscores (human friendly sorting).
+  Sort identifiers ignoring case, and sort underscores after letters.
   '''
-  identifiers.sort(key=lambda n: n.lower().replace('_', ''))
+  identifiers.sort(key=lambda n: n.lower().replace('_', '~'))
   return identifiers
 
 # vim: ts=2 sw=2 sts=2 et
