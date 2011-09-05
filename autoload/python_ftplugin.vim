@@ -5,7 +5,7 @@
 " Last Change: September 5, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin#version = '0.5.15'
+let g:python_ftplugin#version = '0.5.16'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -312,7 +312,7 @@ function! s:do_module_completion(chr) " {{{1
     let chr = ' '
   endif
   " Do not complete when typing a comment.
-  if search('#.*\%#', 'bcn', line('.'))
+  if !s:syntax_is_code()
     return 0
   " Complete module names when at the end of a from XX import YY line.
   " But do check for comma separators.
@@ -348,7 +348,7 @@ function! s:do_variable_completion(chr) " {{{1
     let chr = ' '
   endif
   " Do not complete when typing a comment.
-  if search('#.*\%#', 'bcn', line('.'))
+  if !s:syntax_is_code()
     return 0
   elseif search('\<from\s\+[A-Za-z0-9_.]\+\.\@<!\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\%#', 'bcn', line('.'))
     if chr == ' ' && !search('\(\<import\|,\)\s*\%#', 'bcn', line('.'))
@@ -372,6 +372,10 @@ function! s:do_variable_completion(chr) " {{{1
     return 0
   endif
   return 1
+endfunction
+
+function! s:syntax_is_code()
+  return synIDattr(synID(line('.'), col('.') - 1, 1), 'name') !~? 'string\|comment'
 endfunction
 
 function! s:restore_completeopt() " {{{1
