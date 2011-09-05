@@ -2,10 +2,10 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart kroon <bart@tarmack.eu>
-" Last Change: September 4, 2011
+" Last Change: September 5, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin_version = '0.5.14'
+let g:python_ftplugin#version = '0.5.15'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -97,7 +97,7 @@ function! python_ftplugin#syntax_check() " {{{1
       else
         let g:python_check_syntax = 0
       endif
-      call xolox#misc#msg#warn(message, g:python_ftplugin_version)
+      call xolox#misc#msg#warn(message, g:python_ftplugin#version)
     else
       let mp_save = &makeprg
       let efm_save = &errorformat
@@ -105,7 +105,7 @@ function! python_ftplugin#syntax_check() " {{{1
         let &makeprg = makeprg
         let &errorformat = error_format
         let winnr = winnr()
-        call xolox#misc#msg#info('python.vim %s: Checking Python script syntax ..', g:python_ftplugin_version)
+        call xolox#misc#msg#info('python.vim %s: Checking Python script syntax ..', g:python_ftplugin#version)
         execute 'silent make!'
         cwindow
         if winnr() != winnr
@@ -149,7 +149,7 @@ function! python_ftplugin#complete_modules(findstart, base) " {{{1
     " TODO Always scan current directory?
     let starttime = xolox#misc#timer#start()
     let candidates = s:add_modules(a:base, [])
-    call xolox#misc#timer#stop("python.vim %s: Found %s completion candidates in %s.", g:python_ftplugin_version, len(candidates), starttime)
+    call xolox#misc#timer#stop("python.vim %s: Found %s completion candidates in %s.", g:python_ftplugin#version, len(candidates), starttime)
     return candidates
   endif
 endfunction
@@ -190,20 +190,20 @@ function! s:find_modules(base) " {{{1
   for key in keys
     call add(items, join(done + [key], '.'))
   endfor
-  call xolox#misc#timer#stop("python.vim %s: Found %i module names in %s.", g:python_ftplugin_version, len(items), start_load)
+  call xolox#misc#timer#stop("python.vim %s: Found %i module names in %s.", g:python_ftplugin#version, len(items), start_load)
   return items
 endfunction
 
 function! s:find_start(type) " {{{2
   let prefix = getline('.')[0 : col('.')-2]
   let ident = matchstr(prefix, '[A-Za-z0-9_.]\+$')
-  call xolox#misc#msg#debug("python.vim %s: Completing %s `%s'.", g:python_ftplugin_version, a:type, ident)
+  call xolox#misc#msg#debug("python.vim %s: Completing %s `%s'.", g:python_ftplugin#version, a:type, ident)
   return col('.') - len(ident) - 1
 endfunction
 
 function! python_ftplugin#get_modules(base, node) " {{{2
   if empty(s:module_completion_cache)
-    call xolox#misc#msg#info("python.vim %s: Caching top level Python modules ..", g:python_ftplugin_version)
+    call xolox#misc#msg#info("python.vim %s: Caching top level Python modules ..", g:python_ftplugin#version)
   endif
   if empty(a:node)
     call s:load_python_script()
@@ -256,7 +256,7 @@ function! python_ftplugin#complete_variables(findstart, base) " {{{1
       endif
     endif
     let candidates = s:add_modules(a:base, candidates)
-    call xolox#misc#timer#stop("python.vim %s: Found %s completion candidates in %s.", g:python_ftplugin_version, len(candidates), starttime)
+    call xolox#misc#timer#stop("python.vim %s: Found %s completion candidates in %s.", g:python_ftplugin#version, len(candidates), starttime)
     return candidates
   endif
 endfunction
@@ -292,7 +292,7 @@ function! python_ftplugin#auto_complete(chr) " {{{1
     let result = "\<C-x>\<C-u>\<C-n>"
   endif
   if exists('result')
-    call xolox#misc#msg#debug("python.vim %s: %s %s completion.", g:python_ftplugin_version, pumvisible() ? "Continuing" : "Starting", type)
+    call xolox#misc#msg#debug("python.vim %s: %s %s completion.", g:python_ftplugin#version, pumvisible() ? "Continuing" : "Starting", type)
     " Make sure Vim opens the menu but doesn't enter the first match.
     let b:python_cot_save = &completeopt
     set cot+=menu cot+=menuone cot+=longest
