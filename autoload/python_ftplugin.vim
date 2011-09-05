@@ -5,7 +5,7 @@
 " Last Change: September 6, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin#version = '0.5.17'
+let g:python_ftplugin#version = '0.5.18'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -202,9 +202,6 @@ function! s:find_start(type) " {{{2
 endfunction
 
 function! python_ftplugin#get_modules(base, node) " {{{2
-  if empty(s:module_completion_cache)
-    call xolox#misc#msg#info("python.vim %s: Caching top level Python modules ..", g:python_ftplugin#version)
-  endif
   if empty(a:node)
     call s:load_python_script()
     redir => listing
