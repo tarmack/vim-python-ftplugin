@@ -5,7 +5,7 @@
 " Last Change: September 6, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin#version = '0.5.18'
+let g:python_ftplugin#version = '0.5.19'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -157,7 +157,7 @@ endfunction
 function! s:find_modules(base) " {{{1
   let start_load = xolox#misc#timer#start()
   let todo = []
-  let fromstr = matchstr(getline('.'), '\<\(from\s\+\)\@<=[A-Za-z0-9_.]\+\(\s\+import\([A-Za-z0-9_,]\s*\)*\)\@=')
+  let fromstr = s:get_base_module(getline('.'))
   let from = split(fromstr, '\.')
   call extend(todo, from)
   call extend(todo, split(a:base, '\.'))
@@ -192,6 +192,10 @@ function! s:find_modules(base) " {{{1
   endfor
   call xolox#misc#timer#stop("python.vim %s: Found %i module names in %s.", g:python_ftplugin#version, len(items), start_load)
   return items
+endfunction
+
+function! s:get_base_module(line) " {{{1
+  return matchstr(getline('.'), '\<\(from\s\+\)\@<=[A-Za-z0-9_.]\+\(\s\+import\s\+\([A-Za-z0-9_,]\s*\)*\)\@=')
 endfunction
 
 function! s:find_start(type) " {{{2
@@ -235,7 +239,7 @@ function! python_ftplugin#complete_variables(findstart, base) " {{{1
     let starttime = xolox#misc#timer#start()
     let candidates = []
     if s:do_variable_completion(a:base[-1:])
-      let from = matchstr(getline('.'), '\<\(from\s\+\)\@<=[A-Za-z0-9_.]\+\(\s\+import\s\+\([A-Za-z0-9_,]\s*\)*\)\@=')
+      let from = s:get_base_module(getline('.'))
       if empty(from)
         let base = a:base
       else
@@ -308,33 +312,28 @@ function! s:do_module_completion(chr) " {{{1
   if chr == ''
     let chr = ' '
   endif
-  " Do not complete when typing a comment.
-  if !s:syntax_is_code()
-    return 0
-  " Complete module names when at the end of a from XX import YY line.
-  " But do check for comma separators.
-  elseif search('\<from\s\+[A-Za-z0-9_.]\+\.\@<!\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\%#', 'bcn', line('.'))
-    if chr == ' ' && !search('\(\<import\|,\)\s*\%#', 'bcn', line('.'))
-      return 0
-    elseif chr == '.'
-      return 0
-    endif
-    return 1
 
+  let complete = s:do_completion_always(chr)
+  if complete != -1
+    return complete
+  
+  " Complete module names in the first part of a from XX import YY line.
   elseif search('\<from\s*\(\s\+[A-Za-z0-9_.]*\s\@!\)\=\%#', 'bcn', line('.'))
+    " When a space is typed after the module name do not complete.
     if chr == ' ' && search('\<from\s\+[A-Za-z0-9_.]\+\s*\%#', 'bcn', line('.'))
       return 0
     endif
     return 1
 
+  " Complete modules after an import statement not part of a from XX import YY
+  " line. But only when the last non whitespace character after a preceding
+  " name is a comma.
   elseif search('\<import\s*\(\s\+[A-Za-z0-9_.]*\s*,\)*\s*[A-Za-z0-9_.]*\s\@!\%#', 'bcn', line('.'))
         \ && !search('\<from.\{-}import.\{-}\%#', 'bcn', line('.'))
     if chr == ' ' && !search('\(import\|,\)\s*\%#', 'bcn', line('.'))
       return 0
     endif
     return 1
-  elseif chr == ' ' && !search('\(\<import\|\<import.\{-},\)\s*\%#', 'bcn', line('.'))
-    return 0
   endif
   return 1
 endfunction
@@ -344,31 +343,53 @@ function! s:do_variable_completion(chr) " {{{1
   if chr == ''
     let chr = ' '
   endif
-  " Do not complete when typing a comment.
-  if !s:syntax_is_code()
-    return 0
-  elseif search('\<from\s\+[A-Za-z0-9_.]\+\.\@<!\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\%#', 'bcn', line('.'))
-    if chr == ' ' && !search('\(\<import\|,\)\s*\%#', 'bcn', line('.'))
-      return 0
-    elseif chr == '.'
-      return 0
-    endif
-    return 1
 
-  elseif chr != ' '
-        \ && search('\<from\@!.\{-}import\s\+[A-Za-z0-9_.].\@!\%#', 'bcn', line('.'))
-        \ && search('\<\(from\|import\)\s*[A-Za-z0-9_.]*\s\@!\%#', 'bcn', line('.')) 
-    return 1
+  let complete = s:do_completion_always(chr)
+  if complete != -1
+    return complete
+
+  " Start variable completion when a space is typed in the second part of a
+  " from XX import YY line. But only when the last non whitespace character
+  " after a preceding name is a comma.
   elseif chr != ' '
         \ && search('\<from\s\+[A-Za-z0-9_.]\+\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\s\@!\%#', 'bcn', line('.'))
     return 1
 
+  " Don't complete variables when from or import is the only keyword preceding
+  " the cursor on the line.
   elseif search('\<\(from\|import\).*\%#', 'bcn', line('.'))
-    return 0
-  elseif chr == ' ' && !search('\(\<import\|\<import.\{-},\)\s*\%#', 'bcn', line('.'))
     return 0
   endif
   return 1
+endfunction
+
+function! s:do_completion_always(chr) " {{{1
+  " Function to check if completion should be started regardless of type.
+  " Returns 0 when completion should be started.
+  " Returns 0 if it should definitely not be started.
+  " Returns -1 when no conclusion can be drawn. (i.e. completion for only one type should
+  " start.)
+
+  " Do not complete when typing a comment or string literal.
+  if !s:syntax_is_code()
+    return 0
+
+  " Complete module and variable names when at the end of a from XX import YY line.
+  elseif search('\<from\s\+[A-Za-z0-9_.]\+\.\@<!\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\%#', 'bcn', line('.'))
+    " When a space is typed check for comma separator.
+    if a:chr == ' ' && !search('\(\<import\|,\)\s*\%#', 'bcn', line('.'))
+      return 0
+    " A dot is not allowed in the second part of a from XX import YY line.
+    elseif a:chr == '.'
+      return 0
+    endif
+    return 1
+
+  " Don't complete when a space is typed and we're not on an import line.
+  elseif a:chr == ' ' && !search('\<\(from\|import\|import.\{-},\)\s*\%#', 'bcn', line('.'))
+    return 0
+  endif
+  return -1
 endfunction
 
 function! s:syntax_is_code()
@@ -386,3 +407,5 @@ function! s:restore_completeopt() " {{{1
     autocmd! CursorHold,CursorHoldI <buffer>
   augroup END
 endfunction
+
+" vim: ts=2 sw=2 sts=2  et
