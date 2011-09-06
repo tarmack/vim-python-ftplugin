@@ -5,7 +5,7 @@
 " Last Change: September 6, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin#version = '0.5.19'
+let g:python_ftplugin#version = '0.5.20'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -280,7 +280,18 @@ function! s:friendly_sort(a, b) " {{{1
 endfunction
 
 function! python_ftplugin#auto_complete(chr) " {{{1
-  if xolox#misc#option#get('python_auto_complete_variables', 0)
+  if a:chr == ' '
+        \ && search('\<from\s\+[A-Za-z0-9._]\+\s*\%#\s*$', 'bcn', line('.'))
+        \ && s:syntax_is_code()
+    " Fill 'import' in for the user when a space is entered after the from part.
+    if xolox#misc#option#get('python_auto_complete_variables', 0)
+      let type = 'variable'
+      let result = "import \<C-x>\<C-o>\<C-n>"
+    elseif xolox#misc#option#get('python_auto_complete_modules', 1)
+      let type = 'module'
+      let result = "import \<C-x>\<C-u>\<C-n>"
+    endif
+  elseif xolox#misc#option#get('python_auto_complete_variables', 0)
         \ && s:do_variable_completion(a:chr)
     " Automatic completion of canonical variable names.
     let type = 'variable'
