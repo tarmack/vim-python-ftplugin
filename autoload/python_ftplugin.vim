@@ -2,10 +2,10 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart kroon <bart@tarmack.eu>
-" Last Change: September 6, 2011
+" Last Change: September 11, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin#version = '0.5.20'
+let g:python_ftplugin#version = '0.5.21'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -280,7 +280,10 @@ function! s:friendly_sort(a, b) " {{{1
 endfunction
 
 function! python_ftplugin#auto_complete(chr) " {{{1
-  if a:chr == ' '
+  if a:chr == '.' && search('\%#\S', 'cn', line('.'))
+    " Don't auto complete when typing in between parts of code.
+    return a:chr
+  elseif a:chr == ' '
         \ && search('\<from\s\+[A-Za-z0-9._]\+\s*\%#\s*$', 'bcn', line('.'))
         \ && s:syntax_is_code()
     " Fill 'import' in for the user when a space is entered after the from part.
