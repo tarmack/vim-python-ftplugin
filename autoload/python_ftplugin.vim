@@ -5,7 +5,7 @@
 " Last Change: September 11, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin#version = '0.5.22'
+let g:python_ftplugin#version = '0.5.23'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -198,6 +198,53 @@ function! s:get_base_module(line) " {{{1
   return matchstr(getline('.'), '\<\(from\s\+\)\@<=[A-Za-z0-9_.]\+\(\s\+import\s\+\([A-Za-z0-9_,]\s*\)*\)\@=')
 endfunction
 
+function! s:get_imports(base) " {{{1
+  " When completing regular code search for 'from import' and 'import as' lines
+  " that match the base we are looking for.
+  if empty(a:base)
+    return {}
+  endif
+  let imports = {}
+  let cursor_save = getpos('.')
+  call cursor(1, 1)
+  let base = xolox#misc#escape#pattern(split(a:base, '\.')[0])
+  while search('\<import\>.\{-}\<' . base, 'cW', 0, 500) && s:syntax_is_code()
+    " Get the import line and remove any trailing comments.
+    let line = split(getline('.'), '\s*#\s*')[0]
+
+    " Get the from part if it is pressent.
+    let from = matchstr(line, '\<\%(from\s\+\)\@<=[A-Za-z0-9_.]\+\%(\s\+import\>\)\@=')
+    " Get the module if this is a 'import as' line.
+    let module = matchstr(line, '\<\%(import\s\+\)\@<=[A-Za-z0-9_.]\+\%(\s\+as\s\+' . base . '\)\@=')
+    if !empty(module)
+      " If the line is a 'import as' line, get the name it is imported as.
+      let names = [split(line, '\s*as\s*')[-1]]
+    else
+      " If there is no 'as' get the list of imported names.
+      let names = split(line, ',\s*')
+      let names[0] = split(names[0], '\s\+')[-1]
+    endif
+
+    for name in filter(names, 'v:val =~ "^' . base . '"')
+      if empty(module)
+        let imports[name] = from . '.' . name
+      elseif empty(from)
+        let imports[name] = module
+      else
+        let imports[name] = from . '.' . module
+      endif
+    endfor
+    call cursor(line('.') + 1, 1)
+    unlet from module names line
+  endwhile
+  call setpos('.', cursor_save)
+  return imports
+endfunction
+
+function! python_ftplugin#get_imports(base)
+  return s:get_imports(a:base)
+endfunction
+
 function! s:find_start(type) " {{{2
   let prefix = getline('.')[0 : col('.')-2]
   let ident = matchstr(prefix, '[A-Za-z0-9_.]\+$')
@@ -239,21 +286,44 @@ function! python_ftplugin#complete_variables(findstart, base) " {{{1
     let starttime = xolox#misc#timer#start()
     let candidates = []
     if s:do_variable_completion(a:base[-1:])
-      let from = s:get_base_module(getline('.'))
-      if empty(from)
-        let base = a:base
+      if search('\<\(import\|from\)\>', 'bcn', line('.'))
+        let from = s:get_base_module(getline('.'))
+        if empty(from)
+          let base = a:base
+        else
+          let base = from . '.' . a:base
+        endif
       else
-        let base = from . '.' . a:base
+        let base = split(a:base, '\.')
+        let imports = s:get_imports(get(base, 0, ''))
       endif
       call s:load_python_script()
       redir => listing
-      silent python complete_variables(vim.eval('base'))
+      if exists('imports')
+        for module in keys(imports)
+          let module = imports[module] . '.' . join(base[1:], '.')
+          silent python complete_variables(vim.eval('module'))
+        endfor
+      else
+        silent python complete_variables(vim.eval('base'))
+      endif
       redir END
-      call extend(candidates, split(listing, '\n'))
-      if !empty(from)
-        call map(candidates, 'v:val[len(from) + 1 :]')
+      let completes = split(listing, '\n')
+      if exists('imports')
+        for module in keys(imports)
+          let pattern = xolox#misc#escape#pattern(imports[module])
+          let index = len(imports[module])
+          for compl in completes
+            if compl =~ '^' . pattern . '\.'
+              call add(candidates, module . '.' . compl[index+1:])
+            endif
+          endfor
+        endfor
+      else
+        call map(completes, 'v:val[len(from) + 1 :]')
         let pattern = '^' . xolox#misc#escape#pattern(a:base) . '\.'
-        call filter(candidates, 'v:val !~ pattern')
+        call filter(completes, 'v:val !~ pattern')
+        call extend(candidates, completes)
       endif
     endif
     let candidates = s:add_modules(a:base, candidates)
@@ -264,7 +334,23 @@ endfunction
 
 function! s:add_modules(base, candidates) " {{{1
   if s:do_module_completion(a:base[-1:])
+    let base = split(a:base, '\.')
     call extend(a:candidates, s:find_modules(a:base))
+    let imports = s:get_imports(get(base, 0, ''))
+    if !empty(imports)
+      let base = split(a:base, '\.')
+      for name in keys(imports)
+        let module = imports[name] . '.' . join(base[1:], '.')
+        let completes = s:find_modules(module)
+        let pattern = xolox#misc#escape#pattern(imports[name])
+        let index = len(imports[name])
+        for compl in completes
+          if compl =~ '^' . pattern . '\.'
+            call add(a:candidates, name . '.' . compl[index+1:])
+          endif
+        endfor
+      endfor
+    endif
     let pattern = '^' . xolox#misc#escape#pattern(a:base)
     call filter(a:candidates, 'v:val =~# pattern')
     let pattern = pattern . '\.'
