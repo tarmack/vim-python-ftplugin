@@ -28,8 +28,7 @@ def complete_modules(base):
   # Sort the module list ignoring case and underscores.
   if base:
     base += '.'
-  for modname in friendly_sort(list(modulenames)):
-    print modname
+  print '\n'.join(list(modulenames))
   #return [base + modname for modname in friendly_sort(list(modulenames))]
 
 def scan_modules(directory, base, modulenames):
@@ -63,10 +62,9 @@ def complete_variables(expr):
   subject = module
   while todo:
     if len(todo) == 1:
-      attributes = [attr for attr in dir(subject) if attr.startswith(todo[0])]
       expr = ('.'.join(done) + '.') if done else ''
-      for attr in attributes:
-        print expr + attr
+      attributes = [expr + attr for attr in dir(subject) if attr.startswith(todo[0])]
+      print '\n'.join(attributes)
     try:
       subject = getattr(subject, todo[0])
       done.append(todo.pop(0))
@@ -74,8 +72,8 @@ def complete_variables(expr):
       break
   if subject:
     expr = ('.'.join(done) + '.') if done else ''
-    for entry in friendly_sort(dir(subject)):
-      print expr + entry
+    subject = [expr + entry for entry in dir(subject)]
+    print '\n'.join(subject)
 
 def load_module(todo, done):
   '''
@@ -108,12 +106,5 @@ def find_module_path(name):
     if os.path.isfile(scriptfile):
       print scriptfile
       break
-
-def friendly_sort(identifiers):
-  '''
-  Sort identifiers ignoring case, and sort underscores after letters.
-  '''
-  identifiers.sort(key=lambda n: n.lower().replace('_', '~'))
-  return identifiers
 
 # vim: ts=2 sw=2 sts=2 et
