@@ -3,7 +3,7 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart kroon <bart@tarmack.eu>
-" Last Change: July 31, 2011
+" Last Change: September 18, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
 if exists('b:did_ftplugin')
@@ -53,6 +53,13 @@ if has('gui_win32') && !exists('b:browsefilter')
   let b:browsefilter = "Python Files (*.py)\t*.py\nAll Files (*.*)\t*.*\n"
   call add(s:undo_ftplugin, 'unlet! b:browsefilter')
 endif
+
+" Don't screw up folds when inserting text that might affect them, until
+" leaving insert mode. This also helps keep completion quick.
+" Foldmethod is local to the window. Protect against screwing up folding when
+" switching between windows.
+autocmd InsertEnter * if !exists('w:last_fdm') | let w:last_fdm=&foldmethod | setlocal foldmethod=manual | endif
+autocmd InsertLeave,WinLeave * if exists('w:last_fdm') | let &l:foldmethod=w:last_fdm | unlet w:last_fdm | endif
 
 " Mappings to jump between classes and functions. {{{1
 nnoremap <silent> <buffer> ]] :call python_ftplugin#jump('/^\(class\\|def\)')<cr>
