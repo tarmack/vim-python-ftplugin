@@ -2,10 +2,10 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart kroon <bart@tarmack.eu>
-" Last Change: September 12, 2011
+" Last Change: September 18, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin#version = '0.5.25'
+let g:python_ftplugin#version = '0.5.26'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -150,8 +150,8 @@ function! python_ftplugin#complete_variables(findstart, base) " {{{1
     let candidates = []
     if s:do_variable_completion(a:base[-1:])
       let base = a:base
-      if search('\<from\>', 'bcn', line('.'))
-        let from = s:get_base_module(getline('.'))
+      if match(s:get_continued_line(), '\<from\>') >= 0
+        let from = s:get_base_module()
         if !empty(from)
           let base = from . '.' . a:base
         endif
@@ -243,7 +243,7 @@ endfunction
 function! s:find_modules(base) " {{{1
   let start_load = xolox#misc#timer#start()
   let todo = []
-  let fromstr = s:get_base_module(getline('.'))
+  let fromstr = s:get_base_module()
   let from = split(fromstr, '\.')
   call extend(todo, from)
   call extend(todo, split(a:base, '\.'))
@@ -280,8 +280,8 @@ function! s:find_modules(base) " {{{1
   return items
 endfunction
 
-function! s:get_base_module(line) " {{{1
-  return matchstr(getline('.'), '\<\(from\s\+\)\@<=[A-Za-z0-9_.]\+\(\s\+import\s\+\([A-Za-z0-9_,]\s*\)*\)\@=')
+function! s:get_base_module() " {{{1
+  return matchstr(s:get_continued_line(), '\<\(from\s\+\)\@<=[A-Za-z0-9_.]\+\(\s\+import\s\+\([A-Za-z0-9_,]\s*\)*\)\@=')
 endfunction
 
 function! s:get_imports(base) " {{{1
@@ -296,37 +296,48 @@ function! s:get_imports(base) " {{{1
   let cursor_save = getpos('.')
   call cursor(1, 1)
   let base = xolox#misc#escape#pattern(split(a:base, '\.')[0])
-  while search('\<import\>.\{-}\<' . base, 'cW', 0, 500) && s:syntax_is_code()
-    " Get the import line and remove any trailing comments.
-    let line = split(getline('.'), '\s*#\s*')[0]
+  while search('\<import\>', 'cW', 0, 500) && s:syntax_is_code()
+    " Get the full import line and remove any trailing comments.
+    let line_no = line('.')
+    let line = split(getline(line_no), '\s*#')[0]
+    while match(line, '\\$') >= 0
+      let line_no += 1
+      let line = line[0 : -2] . get(split(getline(line_no), '\s*#'), 0, '')
+    endwhile
+    if match(line, '\<import\>.\{-}\<' . base) >= 0
 
-    " Get the from part if it is pressent.
-    let from = matchstr(line, '\<\%(from\s\+\)\@<=[A-Za-z0-9_.]\+\%(\s\+import\>\)\@=')
-    " Get the module if this is a 'import as' line.
-    let module = matchstr(line, '\<\%(import\s\+\)\@<=[A-Za-z0-9_.]\+\%(\s\+as\s\+' . base . '\)\@=')
-    if !empty(module)
-      " If the line is a 'import as' line, get the name it is imported as.
-      let names = [split(line, '\s*as\s*')[-1]]
-    else
-      " If there is no 'as' get the list of imported names.
-      let names = split(line, ',\s*')
-      let names[0] = split(names[0], '\s\+')[-1]
-    endif
-
-    for name in filter(names, 'v:val =~ "^' . base . '"')
-      if empty(module)
-        let imports[name] = from . '.' . name
-      elseif empty(from)
-        let imports[name] = module
+      " Get the from part if it is pressent.
+      let from = matchstr(line, '\<\%(from\s\+\)\@<=[A-Za-z0-9_.]\+\%(\s\+import\>\)\@=')
+      " Get the module if this is a 'import as' line.
+      let module = matchstr(line, '\<\%(import\s\+\)\@<=[A-Za-z0-9_.]\+\%(\s\+as\s\+' . base . '\)\@=')
+      if !empty(module)
+        " If the line is a 'import as' line, get the name it is imported as.
+        let names = [split(line, '\s*as\s*')[-1]]
       else
-        let imports[name] = from . '.' . module
+        " If there is no 'as' get the list of imported names.
+        let names = split(line, ',\s*')
+        let names[0] = split(names[0], '\s\+')[-1]
       endif
-    endfor
-    call cursor(line('.') + 1, 1)
-    unlet from module names line
+
+      for name in filter(names, 'v:val =~ "^' . base . '"')
+        if empty(module)
+          let imports[name] = from . '.' . name
+        elseif empty(from)
+          let imports[name] = module
+        else
+          let imports[name] = from . '.' . module
+        endif
+      endfor
+      unlet from module names line
+    endif
+    call cursor(line_no + 1, 1)
   endwhile
   call setpos('.', cursor_save)
   return imports
+endfunction
+
+function! python_ftplugin#aaa(base)
+  return s:get_imports(a:base)
 endfunction
 
 function! python_ftplugin#auto_complete(chr) " {{{1
@@ -376,15 +387,16 @@ function! s:do_module_completion(chr) " {{{1
   if chr == ''
     let chr = ' '
   endif
+  let line = s:get_continued_line()
 
-  let complete = s:do_completion_always(chr)
+  let complete = s:do_completion_always(chr, line)
   if complete != -1
     return complete
   
   " Complete module names in the first part of a from XX import YY line.
-  elseif search('\<from\s*\(\s\+[A-Za-z0-9_.]*\s\@!\)\=\%#', 'bcn', line('.'))
+  elseif match(line, '\<from\s*\(\s\+[A-Za-z0-9_.]*\s\@!\)\=$') >= 0
     " When a space is typed after the module name do not complete.
-    if chr == ' ' && search('\<from\s\+[A-Za-z0-9_.]\+\s*\%#', 'bcn', line('.'))
+    if chr == ' ' && match(line, '\<from\s\+[A-Za-z0-9_.]\+\s*$') >= 0
       return 0
     endif
     return 1
@@ -392,9 +404,9 @@ function! s:do_module_completion(chr) " {{{1
   " Complete modules after an import statement not part of a from XX import YY
   " line. But only when the last non whitespace character after a preceding
   " name is a comma.
-  elseif search('\<import\s*\(\s\+[A-Za-z0-9_.]*\s*,\)*\s*[A-Za-z0-9_.]*\s\@!\%#', 'bcn', line('.'))
-        \ && !search('\<from.\{-}import.\{-}\%#', 'bcn', line('.'))
-    if chr == ' ' && !search('\(import\|,\)\s*\%#', 'bcn', line('.'))
+  elseif match(line, '\<import\s*\(\s\+[A-Za-z0-9_.]*\s*,\)*\s*[A-Za-z0-9_.]*\s\@!$') >= 0
+        \ && match(line, '\<from.\{-}import.\{-}$') < 0
+    if chr == ' ' && match(line, '\(import\|,\)\s*$') < 0
       return 0
     endif
     return 1
@@ -407,8 +419,9 @@ function! s:do_variable_completion(chr) " {{{1
   if chr == ''
     let chr = ' '
   endif
+  let line = s:get_continued_line()
 
-  let complete = s:do_completion_always(chr)
+  let complete = s:do_completion_always(chr, line)
   if complete != -1
     return complete
 
@@ -416,20 +429,20 @@ function! s:do_variable_completion(chr) " {{{1
   " from XX import YY line. But only when the last non whitespace character
   " after a preceding name is a comma.
   elseif chr != ' '
-        \ && search('\<from\s\+[A-Za-z0-9_.]\+\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\s\@!\%#', 'bcn', line('.'))
+        \ && match(line, '\<from\s\+[A-Za-z0-9_.]\+\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\s\@!$') >= 0
     return 1
 
   " Don't complete variables when from or import is the only keyword preceding
   " the cursor on the line.
-  elseif search('\<\(from\|import\).*\%#', 'bcn', line('.'))
+  elseif match(line, '\<\(from\|import\).*$') >= 0
     return 0
   endif
   return 1
 endfunction
 
-function! s:do_completion_always(chr) " {{{1
+function! s:do_completion_always(chr, line) " {{{1
   " Function to check if completion should be started regardless of type.
-  " Returns 0 when completion should be started.
+  " Returns 1 when completion should be started.
   " Returns 0 if it should definitely not be started.
   " Returns -1 when no conclusion can be drawn. (i.e. completion for only one type should
   " start.)
@@ -439,9 +452,9 @@ function! s:do_completion_always(chr) " {{{1
     return 0
 
   " Complete module and variable names when at the end of a from XX import YY line.
-  elseif search('\<from\s\+[A-Za-z0-9_.]\+\.\@<!\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*\%#', 'bcn', line('.'))
+  elseif match(a:line, '\<from\s\+[A-Za-z0-9_.]\+\.\@<!\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*$') >= 0
     " When a space is typed check for comma separator.
-    if a:chr == ' ' && !search('\(\<import\|,\)\s*\%#', 'bcn', line('.'))
+    if a:chr == ' ' && match(a:line, '\(\<import\|,\)\s*$') < 0
       return 0
     " A dot is not allowed in the second part of a from XX import YY line.
     elseif a:chr == '.'
@@ -450,14 +463,24 @@ function! s:do_completion_always(chr) " {{{1
     return 1
 
   " Don't complete when a space is typed and we're not on an import line.
-  elseif a:chr == ' ' && !search('\<\(from\|import\|import.\{-},\)\s*\%#', 'bcn', line('.'))
+  elseif a:chr == ' ' && match(a:line, '\<\(from\|import\|import.\{-},\)\s*$') < 0
     return 0
   endif
   return -1
 endfunction
 
-function! s:syntax_is_code()
+function! s:syntax_is_code() " {{{2
   return synIDattr(synID(line('.'), col('.') - 1, 1), 'name') !~? 'string\|comment'
+endfunction
+
+function! s:get_continued_line() " {{{2
+  let line = getline('.')[0 : col('.') - 1]
+  let line_no = line('.')
+  while match(getline(line_no - 1), '\\$') >= 0
+    let line_no -= 1
+    let line = getline(line_no)[0 : -2] . line
+  endwhile
+  return line
 endfunction
 
 function! s:prepare_candidates(candidates, base) " {{{1
