@@ -330,7 +330,7 @@ function! s:get_imports(base) " {{{1
 endfunction
 
 function! python_ftplugin#auto_complete(chr) " {{{1
-  if a:chr == '.' && search('\%#\S', 'cn', line('.'))
+  if a:chr == '.' && search('\%#\[A-Za-z0-9._]', 'cn', line('.'))
     " Don't auto complete when typing in between parts of code.
     return a:chr
   elseif a:chr == ' '
