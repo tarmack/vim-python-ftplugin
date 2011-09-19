@@ -2,10 +2,10 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart kroon <bart@tarmack.eu>
-" Last Change: September 18, 2011
+" Last Change: September 19, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin#version = '0.5.26'
+let g:python_ftplugin#version = '0.5.27'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -341,7 +341,7 @@ function! python_ftplugin#aaa(base)
 endfunction
 
 function! python_ftplugin#auto_complete(chr) " {{{1
-  if a:chr == '.' && search('\%#\[A-Za-z0-9._]', 'cn', line('.'))
+  if a:chr == '.' && search('\%#[A-Za-z0-9._]', 'cn', line('.'))
     " Don't auto complete when typing in between parts of code.
     return a:chr
   elseif a:chr == ' '
