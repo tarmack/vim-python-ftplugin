@@ -5,7 +5,7 @@
 " Last Change: October 2, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin#version = '0.5.29'
+let g:python_ftplugin#version = '0.5.30'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -193,7 +193,7 @@ function! python_ftplugin#complete_variables(findstart, base) " {{{1
       if !exists('imports')
         let imports = s:get_imports(a:base)
       endif
-      call extend(candidates, s:add_modules(a:base, imports))
+      call extend(candidates, s:add_modules(base, imports))
     endif
     let candidates = s:prepare_candidates(candidates, a:base)
     call xolox#misc#timer#stop("python.vim %s: Found %s completion candidates in %s.", g:python_ftplugin#version, len(candidates), starttime)
