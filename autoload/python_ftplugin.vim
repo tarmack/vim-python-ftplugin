@@ -2,10 +2,10 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart kroon <bart@tarmack.eu>
-" Last Change: September 26, 2011
+" Last Change: October 2, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin#version = '0.5.28'
+let g:python_ftplugin#version = '0.5.29'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! python_ftplugin#fold_text() " {{{1
@@ -449,6 +449,10 @@ function! s:do_completion_always(chr, line) " {{{1
 
   " Do not complete when typing a comment or string literal.
   if !s:syntax_is_code()
+    return 0
+  
+  " Don't complete after 'self'.
+  elseif match(a:line, '\<self$')
     return 0
 
   " Complete module and variable names when at the end of a from XX import YY line.
