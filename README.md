@@ -11,31 +11,37 @@ The Python file type plug-in for Vim helps you while developing in Python by pro
  * Control-X Control-O completes variable names, for example after `os` or `os.` it would complete `os.path` (and others). *Be aware that this imports modules to perform introspection and assumes that importing a module does not have serious side effects (although it might, however it shouldn't).*
    * You can enable automatic variable completion after typing a dot or if you type a space after `import` on a `from <module> import <variable>` line. (*this is not enabled by default because of the side effect issue mentioned above*).
 
+**Experimental features:**
+
+ * The plug-in now comes with a Python script that uses the [AST module][ast] in the Python standard library to implement a type inference engine which can be used to suggest completion candidates. The type inference engine has two nice properties that the other completion methods don't have: It has a lot more information to go by and it works by parsing the source code so it's safe to use on code with side effects.
+
 ## Installation
 
-To use this file, simply add it to your `$VIM/ftplugin` directory. 
+To use the plug-in, simply drop the files into your Vim profile directory (usually this is `~/.vim` on UNIX and `%USERPROFILE%\vimfiles` on Windows), restart Vim and execute the command `:helptags ~/.vim/doc` (use `:helptags ~\vimfiles\doc` instead on Windows).
 
-To use the syntax check, please make sure pyflakes is installed. It can be found in most Linux distributions.
+To use the syntax check, please make sure [pyflakes] [pyflakes] is installed. It can be found in most Linux distributions, e.g. on Debian/Ubuntu Linux it can be installed using the following command:
+
+    $ sudo apt-get install pyflakes
 
 To enable folds for classes and functions defined without leading whitespace, make sure your Python syntax file uses a match rather than a keyword statement for the def and class keywords.
 
 Change the line to say something like:
 
-    syn match  [group]  "\<\%(def\|class\)\>" [options]
+    :syntax match [group] "\<\%(def\|class\)\>" [options]
 
 I can recommend you [Dmitry Vasiliev's] [extsyntax] adaptation of the default Python syntax file. In this file you will need to replace the following line:
 
-    syn keyword  pythonStatement  def class nextgroup=pythonFunction skipwhite
+    :syntax keyword pythonStatement def class nextgroup=pythonFunction skipwhite
 
 with:
 
-    syn match  pythonStatement  "\<\%(def\|class\)\>" nextgroup=pythonFunction skipwhite
+    :syntax match pythonStatement "\<\%(def\|class\)\>" nextgroup=pythonFunction skipwhite
 
 ## Options
 
 All options are enabled by default. To disable an option do:
 
-    let g:OPTION_NAME = 0
+    :let g:OPTION_NAME = 0
 
 ### The `g:python_syntax_fold` option
 
@@ -79,5 +85,6 @@ This software is licensed under the [MIT license](http://en.wikipedia.org/wiki/M
 © 2011 Peter Odding &lt;<peter@peterodding.com>&gt; and Bart Kroon &lt;<bart@tarmack.eu>&gt;.
 
 
-[pyflakes]: http://pypi.python.org/pypi/pyflakes
+[ast]: http://docs.python.org/library/ast.html
 [extsyntax]: http://www.vim.org/scripts/script.php?script_id=790
+[pyflakes]: http://pypi.python.org/pypi/pyflakes

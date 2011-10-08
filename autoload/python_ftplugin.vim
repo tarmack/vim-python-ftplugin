@@ -2,11 +2,43 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart kroon <bart@tarmack.eu>
-" Last Change: October 2, 2011
+" Last Change: October 8, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin#version = '0.5.30'
+let g:python_ftplugin#version = '0.6'
 let s:profile_dir = expand('<sfile>:p:h:h')
+
+function! s:infer_types(base) " {{{1
+  " TODO This is a quick hack that should be refactored and cleaned up!
+  if !exists('s:inference_loaded')
+    python import vim
+    let scriptfile = s:profile_dir . '/misc/python-ftplugin/inference.py'
+    execute 'pyfile' fnameescape(scriptfile)
+    let s:inference_loaded = 1
+  endif
+  let line = line('.')
+  let column = col('.')
+  let lines = getline(1, '$')
+  let cline = lines[line - 1]
+  let before = cline[: column-1]
+  let after = cline[column :]
+  let temp = substitute(a:base, '\.[^.]*$', '', '')
+  let lines[line - 1] = before . temp . after
+  " XXX Without this ast.parse() will fail with a syntax error :-\
+  let source = join(lines, "\n") . "\n"
+  try
+    redir => listing
+    silent python complete_inferred_types()
+  catch /invalid syntax/
+    return
+  finally
+    redir END
+  endtry
+  let candidates = split(listing, '\n')
+  call map(candidates, "temp . '.' . v:val")
+  let pattern = '^' . xolox#misc#escape#pattern(a:base)
+  return filter(candidates, 'v:val =~# pattern')
+endfunction
 
 function! python_ftplugin#fold_text() " {{{1
   let line = getline(v:foldstart)
@@ -142,7 +174,7 @@ function! python_ftplugin#include_expr(fname) " {{{1
   return xolox#misc#str#trim(output)
 endfunction
 
-function! python_ftplugin#complete_variables(findstart, base) " {{{1
+function! python_ftplugin#omni_complete(findstart, base) " {{{1
   if a:findstart
     return s:find_start('variable')
   else
@@ -193,29 +225,12 @@ function! python_ftplugin#complete_variables(findstart, base) " {{{1
       if !exists('imports')
         let imports = s:get_imports(a:base)
       endif
-      call extend(candidates, s:add_modules(base, imports))
+      call extend(candidates, s:add_modules(a:base, imports))
     endif
+    call extend(candidates, s:infer_types(a:base))
     let candidates = s:prepare_candidates(candidates, a:base)
     call xolox#misc#timer#stop("python.vim %s: Found %s completion candidates in %s.", g:python_ftplugin#version, len(candidates), starttime)
     return candidates
-  endif
-endfunction
-
-function! python_ftplugin#complete_modules(findstart, base) " {{{1
-  if a:findstart
-    return s:find_start('module')
-  else
-    if s:do_module_completion(a:base[-1:])
-      " TODO Always scan current directory?
-      let starttime = xolox#misc#timer#start()
-      let imports = s:get_imports(a:base)
-      let candidates = s:add_modules(a:base, imports)
-      let candidates = s:prepare_candidates(candidates, a:base)
-      call xolox#misc#timer#stop("python.vim %s: Found %s completion candidates in %s.", g:python_ftplugin#version, len(candidates), starttime)
-      return candidates
-    else
-      return []
-    endif
   endif
 endfunction
 
@@ -353,7 +368,7 @@ function! python_ftplugin#auto_complete(chr) " {{{1
       let result = "import \<C-x>\<C-o>\<C-n>"
     elseif xolox#misc#option#get('python_auto_complete_modules', 1)
       let type = 'module'
-      let result = "import \<C-x>\<C-u>\<C-n>"
+      let result = "import \<C-x>\<C-o>\<C-n>"
     endif
   elseif xolox#misc#option#get('python_auto_complete_variables', 0)
         \ && s:do_variable_completion(a:chr)
@@ -365,7 +380,7 @@ function! python_ftplugin#auto_complete(chr) " {{{1
     " Automatic completion of canonical module names,
     " only when variable name completion is not available.
     let type = 'module'
-    let result = "\<C-x>\<C-u>\<C-n>"
+    let result = "\<C-x>\<C-o>\<C-n>"
   endif
   if exists('result')
     call xolox#misc#msg#debug("python.vim %s: %s %s completion.", g:python_ftplugin#version, pumvisible() ? "Continuing" : "Starting", type)
@@ -452,7 +467,7 @@ function! s:do_completion_always(chr, line) " {{{1
     return 0
   
   " Don't complete after 'self'.
-  elseif match(a:line, '\<self$')
+  elseif a:line =~ '\<self$'
     return 0
 
   " Complete module and variable names when at the end of a from XX import YY line.

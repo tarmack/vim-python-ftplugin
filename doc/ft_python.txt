@@ -27,14 +27,29 @@ providing the following features:
    (this is not enabled by default because of the side effect issue mentioned
    above).
 
+Experimental features:
+
+ - The plug-in now comes with a Python script that uses the AST module [2] in
+   the Python standard library to implement a type inference engine which can
+   be used to suggest completion candidates. The type inference engine has two
+   nice properties that the other completion methods don't have: It has a lot
+   more information to go by and it works by parsing the source code so it's
+   safe to use on code with side effects.
+
 ===============================================================================
                                                         *ft_python-installation*
 Installation ~
 
-To use this file, simply add it to your '$VIM/ftplugin' directory.
+To use the plug-in, simply drop the files into your Vim profile directory
+(usually this is '~/.vim' on UNIX and '%USERPROFILE%\vimfiles' on Windows),
+restart Vim and execute the command ':helptags ~/.vim/doc' (use ':helptags
+~\vimfiles\doc' instead on Windows).
 
-To use the syntax check, please make sure pyflakes is installed. It can be
-found in most Linux distributions.
+To use the syntax check, please make sure pyflakes [1] is installed. It can be
+found in most Linux distributions, e.g. on Debian/Ubuntu Linux it can be
+installed using the following command:
+>
+    $ sudo apt-get install pyflakes
 
 To enable folds for classes and functions defined without leading whitespace,
 make sure your Python syntax file uses a match rather than a keyword statement
@@ -42,16 +57,16 @@ for the def and class keywords.
 
 Change the line to say something like:
 >
-    syn match  [group]  "\<\%(def\|class\)\>" [options]
+    :syntax match [group] "\<\%(def\|class\)\>" [options]
 
-I can recommend you Dmitry Vasiliev's [2] adaptation of the default Python
+I can recommend you Dmitry Vasiliev's [3] adaptation of the default Python
 syntax file. In this file you will need to replace the following line:
 >
-    syn keyword  pythonStatement  def class nextgroup=pythonFunction skipwhite
+    :syntax keyword pythonStatement def class nextgroup=pythonFunction skipwhite
 
 with:
 >
-    syn match  pythonStatement  "\<\%(def\|class\)\>" nextgroup=pythonFunction skipwhite
+    :syntax match pythonStatement "\<\%(def\|class\)\>" nextgroup=pythonFunction skipwhite
 
 ===============================================================================
                                                              *ft_python-options*
@@ -59,7 +74,7 @@ Options ~
 
 All options are enabled by default. To disable an option do:
 >
-    let g:OPTION_NAME = 0
+    :let g:OPTION_NAME = 0
 
 -------------------------------------------------------------------------------
 The *g:python_syntax_fold* option
@@ -120,7 +135,7 @@ https://github.com/tarmack/vim-python-ftplugin.
                                                              *ft_python-license*
 License ~
 
-This software is licensed under the MIT license [3]. Copyright 2011 Peter
+This software is licensed under the MIT license [4]. Copyright 2011 Peter
 Odding <peter@peterodding.com> and Bart Kroon <bart@tarmack.eu>.
 
 ===============================================================================
@@ -128,7 +143,8 @@ Odding <peter@peterodding.com> and Bart Kroon <bart@tarmack.eu>.
 References ~
 
 [1] http://pypi.python.org/pypi/pyflakes
-[2] http://www.vim.org/scripts/script.php?script_id=790
-[3] http://en.wikipedia.org/wiki/MIT_License
+[2] http://docs.python.org/library/ast.html
+[3] http://www.vim.org/scripts/script.php?script_id=790
+[4] http://en.wikipedia.org/wiki/MIT_License
 
 vim: ft=help

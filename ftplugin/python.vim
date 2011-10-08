@@ -3,7 +3,7 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart kroon <bart@tarmack.eu>
-" Last Change: September 18, 2011
+" Last Change: October 2, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
 if exists('b:did_ftplugin')
@@ -40,12 +40,8 @@ call add(s:undo_ftplugin, 'setlocal wildignore<')
 setlocal foldtext=python_ftplugin#fold_text()
 call add(s:undo_ftplugin, 'setlocal foldtext<')
 
-" Completion of module names using Control-X Control-U.
-setlocal completefunc=python_ftplugin#complete_modules
-call add(s:undo_ftplugin, 'setlocal completefunc<')
-
-" Completion of variables using Control-X Control-O.
-setlocal omnifunc=python_ftplugin#complete_variables
+" Completion of modules and variables using Control-X Control-O.
+setlocal omnifunc=python_ftplugin#omni_complete
 call add(s:undo_ftplugin, 'setlocal omnifunc<')
 
 " File open/save dialog filename filter on Windows.
