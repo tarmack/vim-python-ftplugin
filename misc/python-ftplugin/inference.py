@@ -206,8 +206,6 @@ class TypeInferenceEngine:
               yield result
           # Check function arguments at potential call sites.
           for call in self.find_function_calls(parent):
-            print "Location:", location
-            print "Args:", call.args
             for result in self.evaluate(call.args[location]):
               yield result
         elif kind == 'var':
