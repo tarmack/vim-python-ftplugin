@@ -5,7 +5,7 @@
 " Last Change: October 8, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin#version = '0.6.1'
+let g:python_ftplugin#version = '0.6.2'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! s:infer_types(base) " {{{1

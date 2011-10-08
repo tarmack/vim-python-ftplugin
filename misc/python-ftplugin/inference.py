@@ -287,6 +287,10 @@ class TypeInferenceEngine:
 
   def dump(self, node, level=0):
     ''' Print an AST subtree as a multi line indented string. '''
+    if isinstance(node, list):
+        for n in node:
+            self.dump(n, level)
+        return
     if not isinstance(node, ast.Expr):
       print '  ' * level + '(' + type(node).__name__ + ') ' + self.format(node)
       level += 1
