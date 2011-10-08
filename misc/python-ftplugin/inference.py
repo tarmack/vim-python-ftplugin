@@ -348,6 +348,8 @@ class TypeInferenceEngine:
       return "'%s'" % node.s
     elif isinstance(node, ast.Expr):
       return self.format(node.value)
+    elif isinstance(node, (str, unicode)):
+      return node
     elif isinstance(node, collections.Iterable):
       values = ', '.join(self.format(v) for v in node)
       if isinstance(node, tuple): values = '(%s)' % values
