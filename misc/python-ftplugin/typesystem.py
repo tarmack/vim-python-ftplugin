@@ -15,7 +15,39 @@ def log(msg, *args):
   print msg % args
 
 class Node(object):
-  pass
+
+  def __init__(self, node, parent):
+    self.parent = parent
+    self.column = getattr(node, 'col_offset', 0)
+    self.line = getattr(node, 'lineno', 0)
+
+  @property
+  def tree(self):
+    return self._find_parent()
+
+  @property
+  def containing_class(self):
+    return self._find_parent(ClassDef)
+
+  @property
+  def containing_scope(self):
+    return self._find_parent(ClassDef, Module)
+
+  @property
+  def containing_function(self):
+    return self._find_parent(FunctionDef)
+
+  @property
+  def containing_module(self):
+    return self._find_parent(Module)
+
+  def _find_parent(self, *types):
+    if self.parent is None:
+      return self
+    elif isinstance(self.parent, types):
+      return self.parent
+    else:
+      return self.parent._find_parent(*types)
 
 class Statement(Node):
   pass
@@ -23,7 +55,7 @@ class Statement(Node):
 class Expression(Node):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     self.value = wrap(node.value, self)
 
   @property
@@ -40,7 +72,7 @@ class Module(Statement):
 
   def __init__(self, node, parent):
     #log("Constructing module ..")
-    self.parent = parent
+    Node.__init__(self, node, parent)
     self.body = wrap(node.body, self)
 
   def __iter__(self):
@@ -53,7 +85,7 @@ class ClassDef(Statement):
 
   def __init__(self, node, parent):
     #log("Constructing class from %s ..", ast.dump(node))
-    self.parent = parent
+    Node.__init__(self, node, parent)
     self.name = wrap(node.name, self)
     self.bases = wrap(node.bases)
     self.body = wrap(node.body, self)
@@ -61,7 +93,15 @@ class ClassDef(Statement):
   @property
   def attrs(self):
     # TODO Implement.
-    return []
+    results = []
+    for node in self:
+      if isinstance(node, FunctionDef):
+        results.append(node.name)
+      elif isinstance(node, Attribute) and str(node.value) == 'self':
+        results.append(node.attr)
+      elif isinstance(node, Assign):
+        results.extend([t.value for t in node.targets])
+    return results
 
   def __iter__(self):
     yield self.name
@@ -79,7 +119,7 @@ class ClassDef(Statement):
 class FunctionDef(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     self.name = wrap(node.name, self)
     #log("Constructing function %s ..", self.name)
     self.args = wrap(node.args.args, self)
@@ -124,7 +164,7 @@ class FunctionDef(Statement):
 class Import(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing import statement from %s ..", ast.dump(node))
     self.names = wrap(node.names, self)
 
@@ -137,7 +177,7 @@ class Import(Statement):
 class ImportFrom(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing ImportFrom statement from %s", ast.dump(node))
     self.module = wrap(node.module, self)
     self.names = wrap(node.names, self)
@@ -152,7 +192,7 @@ class ImportFrom(Statement):
 class Alias(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     self.name = wrap(node.name, self)
     self.asname = wrap(node.asname, self)
 
@@ -168,7 +208,7 @@ class Alias(Expression):
 class If(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing if statement ..")
     self.test = wrap(node.test, self)
     self.body = wrap(node.body, self)
@@ -192,7 +232,7 @@ class If(Statement):
 class For(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing for loop statement from %s", ast.dump(node))
     self.target = wrap(node.target, self)
     self.iter = wrap(node.iter, self)
@@ -218,7 +258,7 @@ class For(Statement):
 class While(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing while loop statement from %s", ast.dump(node))
     self.test = wrap(node.test, self)
     self.body = wrap(node.body, self)
@@ -238,7 +278,7 @@ class While(Statement):
 class Print(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing print statement from %s", ast.dump(node))
     self.values = wrap(node.values, self)
 
@@ -251,7 +291,7 @@ class Print(Statement):
 class Return(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing return statement ..")
     self.value = wrap(node.value, self)
 
@@ -261,53 +301,53 @@ class Return(Statement):
 
   def __iter__(self):
     return iter([self.value])
-  
+
   def __str__(self):
     return 'return %s' % self.value
 
 class Yield(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing yield statement ..")
     self.value = wrap(node.value, self)
 
   def __iter__(self):
     return iter([self.value])
-  
+
   def __str__(self):
     return 'yield %s' % self.value
 
 class Continue(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing continue statement ..")
     pass
 
   def __iter__(self):
     return iter([])
-  
+
   def __str__(self):
     return 'continue'
 
 class Pass(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing pass statement ..")
     pass
 
   def __iter__(self):
     return iter([])
-  
+
   def __str__(self):
     return 'pass'
 
 class Assert(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing assert statement from %s", ast.dump(node))
     self.test = wrap(node.test, self)
     self.msg = wrap(node.msg, self)
@@ -321,7 +361,7 @@ class Assert(Statement):
 class Assign(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing assignment statement ..")
     self.targets = wrap(node.targets, self)
     self.value = wrap(node.value, self)
@@ -339,7 +379,7 @@ class Assign(Statement):
 class AugAssign(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing augmented assignment statement ..")
     self.target = wrap(node.target, self)
     self.value = wrap(node.value, self)
@@ -354,7 +394,7 @@ class AugAssign(Statement):
 class BinOp(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing binary operator expression from %s ..", ast.dump(node))
     self.left = wrap(node.left, self)
     self.right = wrap(node.right, self)
@@ -369,7 +409,7 @@ class BinOp(Expression):
 class IfExp(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing if expression from %s ..", ast.dump(node))
     self.test = wrap(node.test, self)
     self.body = wrap(node.body, self)
@@ -384,7 +424,7 @@ class IfExp(Expression):
 class GeneratorExp(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing generator expression from %s ..", ast.dump(node))
     self.elt = wrap(node.elt, self)
     self.generators = wrap(node.generators, self)
@@ -401,7 +441,7 @@ class GeneratorExp(Expression):
 class Comprehension(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing comprehension from %s ..", ast.dump(node))
     self.target = wrap(node.target, self)
     self.iter = wrap(node.iter, self)
@@ -416,7 +456,7 @@ class Comprehension(Expression):
 class ListComprehension(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing list comprehension from %s ..", ast.dump(node))
     self.elt = wrap(node.elt, self)
     self.generators = wrap(node.generators, self)
@@ -432,7 +472,7 @@ class ListComprehension(Expression):
 class Tuple(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing tuple expression ..")
     self.elts = wrap(node.elts, self)
 
@@ -449,7 +489,7 @@ class Tuple(Expression):
 class Call(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing call expression ..")
     self.func = wrap(node.func, self)
     self.args = wrap(node.args, self)
@@ -460,10 +500,22 @@ class Call(Expression):
   @property
   def attrs(self):
     result = []
-    name = self.func.value
-    for obj in find_function_definitions(name):
+    for obj in self.definitions:
       result.extend(obj.attrs)
     return result
+
+  @property
+  def definitions(self):
+    ''' Yield the function definitions that might be related to a node. '''
+    found = False
+    name = self.func.value
+    scope = self
+    while not found and scope.parent:
+      scope = scope.containing_scope
+      for node in scope:
+        if isinstance(node, (FunctionDef, ClassDef, Lambda)) and node.name == name:
+          found = True
+          yield node
 
   def __iter__(self):
     for node in self.func:
@@ -489,7 +541,7 @@ class Call(Expression):
 class Keyword(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     self.arg = wrap(node.arg, self)
     self.value = wrap(node.value, self)
 
@@ -502,7 +554,7 @@ class Keyword(Expression):
 class Exec(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing exec statement from %s ..", ast.dump(node))
     self.body = wrap(node.body)
     self.globals = wrap(node.globals)
@@ -522,10 +574,14 @@ class Exec(Statement):
 class Attribute(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing attribute expression ..")
     self.value = wrap(node.value, self)
     self.attr = wrap(node.attr, self)
+
+  @property
+  def attrs(self):
+    pass
 
   def __iter__(self):
     return iter([self.value, self.attr])
@@ -536,18 +592,30 @@ class Attribute(Expression):
 class Name(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing name expression %s from %s ..", node.id, ast.dump(node))
     self.value = node.id
 
   @property
   def attrs(self):
     result = []
-    name = self.value
-    for node in find_assignment(name):
+    for node in self.assignments:
       result.extend(node.attrs)
     return result
 
+  @property
+  def assignments(self):
+    found = False
+    name = self.value
+    scope = self
+    while not found and scope.parent:
+      scope = scope.containing_scope
+      for node in scope:
+        if isinstance(node, Assign):
+          for n in flatten(node.targets):
+            if n.value == name:
+              found = True
+              yield node
 
   def __iter__(self):
     return iter([self.value])
@@ -558,7 +626,7 @@ class Name(Expression):
 class Dictionary(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing dictionary expression ..")
     self.keys = wrap(node.keys, self)
     self.values = wrap(node.values, self)
@@ -578,7 +646,7 @@ class Dictionary(Expression):
 class List(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing list expression ..")
     self.elts = wrap(node.elts, self)
 
@@ -595,7 +663,7 @@ class List(Expression):
 class Str(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing string expression ..")
     self.value = node.s
 
@@ -616,7 +684,7 @@ class Str(Expression):
 class Num(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing number expression ..")
     self.value = node.n
 
@@ -633,7 +701,7 @@ class Num(Expression):
 class Subscript(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing subscript expression from %s", ast.dump(node))
     self.value = wrap(node.value, self)
     self.slice = wrap(node.slice, self) # ast.Index
@@ -647,7 +715,7 @@ class Subscript(Expression):
 class Index(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing index expression from %s", ast.dump(node))
     self.value = wrap(node.value, self)
 
@@ -660,7 +728,7 @@ class Index(Expression):
 class BoolOp(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing boolean operator expression from %s", ast.dump(node))
     self.op = node.op
     self.values = wrap(node.values, self)
@@ -679,7 +747,7 @@ class BoolOp(Expression):
 class UnaryOp(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing unary operator expression from %s", ast.dump(node))
     self.op = node.op
     self.operand = wrap(node.operand, self)
@@ -694,7 +762,7 @@ class UnaryOp(Expression):
 class Compare(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing comparison operator expression from %s", ast.dump(node))
     self.left = wrap(node.left, self)
     self.ops = node.ops
@@ -716,7 +784,7 @@ class Compare(Expression):
 class Break(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing break statement from %s", ast.dump(node))
     pass
 
@@ -729,7 +797,7 @@ class Break(Statement):
 class Global(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing global statement from %s", ast.dump(node))
     self.names = wrap(node.names)
 
@@ -742,7 +810,7 @@ class Global(Statement):
 class Delete(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing delete statement from %s", ast.dump(node))
     self.targets = wrap(node.targets)
 
@@ -755,7 +823,7 @@ class Delete(Statement):
 class Ellipsis(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing ellipsis expression from %s", ast.dump(node))
     pass
 
@@ -768,7 +836,7 @@ class Ellipsis(Statement):
 class Lambda(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing lambda expression from %s", ast.dump(node))
     self.args = wrap(node.args.args)
     self.defaults = wrap(node.args.defaults)
@@ -801,7 +869,7 @@ class Lambda(Expression):
 class Raise(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing raise statement from %s", ast.dump(node))
     self.type = wrap(node.type)
     self.inst = wrap(node.inst)
@@ -826,7 +894,7 @@ class Raise(Statement):
 class Slice(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing slice expression from %s", ast.dump(node))
     self.lower = wrap(node.lower)
     self.upper = wrap(node.upper)
@@ -870,7 +938,7 @@ class Slice(Expression):
 class ExtSlice(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     self.dims = wrap(node.dims)
 
   def __iter__(self):
@@ -882,7 +950,7 @@ class ExtSlice(Expression):
 class TryExcept(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing try/except statement from %s", ast.dump(node))
     self.body = wrap(node.body)
     self.handlers = wrap(node.handlers)
@@ -902,7 +970,7 @@ class TryExcept(Statement):
 class TryFinally(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing try/finally statement from %s", ast.dump(node))
     self.body = wrap(node.body)
     self.finalbody = wrap(node.finalbody)
@@ -916,7 +984,7 @@ class TryFinally(Statement):
 class Repr(Expression):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing repr() expression from %s", ast.dump(node))
     self.value = wrap(node.value)
 
@@ -929,7 +997,7 @@ class Repr(Expression):
 class ExceptHandler(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing try/except handler statement from %s", ast.dump(node))
     self.type = wrap(node.type)
     self.name = wrap(node.name)
@@ -954,7 +1022,7 @@ class ExceptHandler(Statement):
 class With(Statement):
 
   def __init__(self, node, parent):
-    self.parent = parent
+    Node.__init__(self, node, parent)
     #log("Constructing with statement from %s", ast.dump(node))
     self.context_expr = wrap(node.context_expr, self)
     self.optional_vars = wrap(node.optional_vars, self)
@@ -1026,20 +1094,31 @@ type_mapping = {
     id(ast.Num): Num,
 }
 
-def find_function_definitions(name):
-  ''' Yield the function definitions that might be related to a node. '''
-  global tree
-  for node in tree:
-    if isinstance(node, FunctionDef) and node.name == name:
-      yield node
+class TypeInferenceEngine(object):
+  def __init__(self, source):
+    assert isinstance(source, basestring)
+    self.tree = wrap(ast.parse(source))
 
-def find_assignment(name):
-  global tree
-  for node in tree:
-    if isinstance(node, Assign):
-      for n in flatten(node.targets):
-        if n.value == name:
-          yield node
+  def complete(self, line, column):
+    node = self.find_node(self.tree, line, column)
+    if node:
+      candidates = list()
+      candidates.extend(node.attrs)
+      return set(candidates)
+
+  def find_node(self, tree, line, column):
+    ''' Find the node at the given (line, column) in the AST. '''
+    last_node = None
+    for node in tree:
+      if node.line == line:
+        node_id = str(getattr(node, 'value', ''))
+        if node.column <= column <= node.column + len(node_id):
+          return node
+      elif node.line >= line and last_node and last_node.line <= line:
+        return self.find_node(last_node, line, column)
+      else:
+        last_node = node
+
 
 def flatten(nested, flat=None):
   ''' Squash a nested sequence into a flat list of nodes. '''
@@ -1104,13 +1183,9 @@ def indent(block):
     block = '\n'.join(str(n) for n in block)
   return '  ' + block.replace('\n', '\n  ')
 
-def get_tree(source):
-  assert isinstance(source, basestring)
-  global tree
-  tree = wrap(ast.parse(source))
-  return tree
 
 
 if __name__ == '__main__':
   with open(__file__) as handle:
     print wrap(ast.parse(handle.read()))
+
