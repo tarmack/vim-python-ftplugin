@@ -1122,8 +1122,12 @@ class TypeInferenceEngine(object):
         node_id = str(getattr(node, 'value', ''))
         if node.column <= column <= node.column + len(node_id):
           return node
-      elif node.line >= line and last_node and last_node.line <= line:
+        else:
+          return self.find_node(node, line, column)
+      elif node.line > line and last_node and last_node.line <= line:
         return self.find_node(last_node, line, column)
+      elif node.line <= line and last_node and last_node.line > line:
+        return self.find_node(node, line, column)
       else:
         last_node = node
 
