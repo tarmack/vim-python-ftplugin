@@ -4,12 +4,23 @@
 # own, to hide the uncomfortable parts of the Python AST. The problem is that
 # we have to write a lot of boilerplate code and the runtime end result will be
 # a bit wasteful because we're wrapping the full abstract syntax tree.
+#
+# TODO (Ab)use scope awareness to complete variables valid in scope?
+# TODO Decorators are missing from the pretty printed output.
 
 import ast
 import numbers
 import collections
 
 DEBUG = True
+
+type_mapping = {}
+
+def wraps(ast_type):
+  def decorator(cls):
+    type_mapping[id(ast_type)] = cls
+    return cls
+  return decorator
 
 def log(msg, *args):
   print msg % args
@@ -20,6 +31,7 @@ class Node(object):
 class Statement(Node):
   pass
 
+@wraps(ast.Expr)
 class Expression(Node):
 
   def __init__(self, node, parent):
@@ -36,6 +48,7 @@ class Expression(Node):
   def __str__(self):
     return str(self.value)
 
+@wraps(ast.Module)
 class Module(Statement):
 
   def __init__(self, node, parent):
@@ -49,6 +62,7 @@ class Module(Statement):
   def __str__(self):
     return 'module:\n' + indent(self.body)
 
+@wraps(ast.ClassDef)
 class ClassDef(Statement):
 
   def __init__(self, node, parent):
@@ -76,6 +90,7 @@ class ClassDef(Statement):
       text += '(%s)' % ', '.join(str(b) for b in self.bases)
     return text + ':\n%s' % indent(self.body)
 
+@wraps(ast.FunctionDef)
 class FunctionDef(Statement):
 
   def __init__(self, node, parent):
@@ -121,6 +136,7 @@ class FunctionDef(Statement):
         ', '.join(str(a) for a in args),
         indent(self.body))
 
+@wraps(ast.Import)
 class Import(Statement):
 
   def __init__(self, node, parent):
@@ -134,6 +150,7 @@ class Import(Statement):
   def __str__(self):
     return 'import ' + ', '.join(str(n) for n in self.names)
 
+@wraps(ast.ImportFrom)
 class ImportFrom(Statement):
 
   def __init__(self, node, parent):
@@ -149,6 +166,7 @@ class ImportFrom(Statement):
     return "from %s import %s" % (self.module,
         ', '.join(str(n) for n in self.names))
 
+@wraps(ast.alias)
 class Alias(Expression):
 
   def __init__(self, node, parent):
@@ -165,6 +183,7 @@ class Alias(Expression):
       text += ' as ' + str(self.asname)
     return text
 
+@wraps(ast.If)
 class If(Statement):
 
   def __init__(self, node, parent):
@@ -189,6 +208,7 @@ class If(Statement):
       lines.append(indent(self.orelse))
     return '\n'.join(lines)
 
+@wraps(ast.For)
 class For(Statement):
 
   def __init__(self, node, parent):
@@ -215,6 +235,7 @@ class For(Statement):
       lines.append(indent(self.body))
     return '\n'.join(lines)
 
+@wraps(ast.While)
 class While(Statement):
 
   def __init__(self, node, parent):
@@ -235,6 +256,7 @@ class While(Statement):
       lines.append(indent(self.orelse))
     return '\n'.join(lines)
 
+@wraps(ast.Print)
 class Print(Statement):
 
   def __init__(self, node, parent):
@@ -248,6 +270,7 @@ class Print(Statement):
   def __str__(self):
     return 'print %s' % ', '.join(str(v) for v in self.values)
 
+@wraps(ast.Return)
 class Return(Statement):
 
   def __init__(self, node, parent):
@@ -265,6 +288,7 @@ class Return(Statement):
   def __str__(self):
     return 'return %s' % self.value
 
+@wraps(ast.Yield)
 class Yield(Statement):
 
   def __init__(self, node, parent):
@@ -278,6 +302,7 @@ class Yield(Statement):
   def __str__(self):
     return 'yield %s' % self.value
 
+@wraps(ast.Continue)
 class Continue(Statement):
 
   def __init__(self, node, parent):
@@ -291,6 +316,7 @@ class Continue(Statement):
   def __str__(self):
     return 'continue'
 
+@wraps(ast.Pass)
 class Pass(Statement):
 
   def __init__(self, node, parent):
@@ -304,6 +330,7 @@ class Pass(Statement):
   def __str__(self):
     return 'pass'
 
+@wraps(ast.Assert)
 class Assert(Statement):
 
   def __init__(self, node, parent):
@@ -318,6 +345,7 @@ class Assert(Statement):
   def __str__(self):
     return 'assert %s, %s' % (self.test, self.msg)
 
+@wraps(ast.Assign)
 class Assign(Statement):
 
   def __init__(self, node, parent):
@@ -336,6 +364,7 @@ class Assign(Statement):
   def __str__(self):
     return '%s = %s' % (', '.join(str(t) for t in self.targets), str(self.value))
 
+@wraps(ast.AugAssign)
 class AugAssign(Statement):
 
   def __init__(self, node, parent):
@@ -351,6 +380,7 @@ class AugAssign(Statement):
   def __str__(self):
     return '%s %s= %s' % (self.target, operator_to_symbol(self.op), self.value)
 
+@wraps(ast.BinOp)
 class BinOp(Expression):
 
   def __init__(self, node, parent):
@@ -366,6 +396,7 @@ class BinOp(Expression):
   def __str__(self):
     return '%s %s %s' % (self.left, operator_to_symbol(self.op), self.right)
 
+@wraps(ast.IfExp)
 class IfExp(Expression):
 
   def __init__(self, node, parent):
@@ -381,6 +412,7 @@ class IfExp(Expression):
   def __str__(self):
     return '%s if %s else %s' % (self.body, self.test, self.orelse)
 
+@wraps(ast.GeneratorExp)
 class GeneratorExp(Expression):
 
   def __init__(self, node, parent):
@@ -398,6 +430,7 @@ class GeneratorExp(Expression):
     return '(%s for %s)' % (self.elt,
         ', '.join(str(g) for g in self.generators))
 
+@wraps(ast.comprehension)
 class Comprehension(Expression):
 
   def __init__(self, node, parent):
@@ -413,6 +446,7 @@ class Comprehension(Expression):
   def __str__(self):
     return '%s in %s' % (self.target, self.iter)
 
+@wraps(ast.ListComp)
 class ListComprehension(Expression):
 
   def __init__(self, node, parent):
@@ -429,6 +463,7 @@ class ListComprehension(Expression):
     return '[%s for %s]' % (self.elt,
         ', '.join(str(g) for g in self.generators))
 
+@wraps(ast.Tuple)
 class Tuple(Expression):
 
   def __init__(self, node, parent):
@@ -446,6 +481,7 @@ class Tuple(Expression):
   def __str__(self):
     return '(%s)' % ', '.join(str(e) for e in self.elts)
 
+@wraps(ast.Call)
 class Call(Expression):
 
   def __init__(self, node, parent):
@@ -486,6 +522,7 @@ class Call(Expression):
       args.append('**' + str(self.kwargs))
     return '%s(%s)' % (self.func, ', '.join(args))
 
+@wraps(ast.keyword)
 class Keyword(Expression):
 
   def __init__(self, node, parent):
@@ -499,6 +536,7 @@ class Keyword(Expression):
   def __str__(self):
     return '%s=%s' % (self.arg, self.value)
 
+@wraps(ast.Exec)
 class Exec(Statement):
 
   def __init__(self, node, parent):
@@ -519,6 +557,7 @@ class Exec(Statement):
         text += ', %s' % self.locals
     return text
 
+@wraps(ast.Attribute)
 class Attribute(Expression):
 
   def __init__(self, node, parent):
@@ -533,6 +572,7 @@ class Attribute(Expression):
   def __str__(self):
     return str(self.value) + '.' + str(self.attr)
 
+@wraps(ast.Name)
 class Name(Expression):
 
   def __init__(self, node, parent):
@@ -548,13 +588,13 @@ class Name(Expression):
       result.extend(node.attrs)
     return result
 
-
   def __iter__(self):
     return iter([self.value])
 
   def __str__(self):
     return str(self.value)
 
+@wraps(ast.Dict)
 class Dictionary(Expression):
 
   def __init__(self, node, parent):
@@ -575,6 +615,7 @@ class Dictionary(Expression):
         str(self.keys[i]) + ': ' + str(self.values[i])
         for i in xrange(len(self.keys)))
 
+@wraps(ast.List)
 class List(Expression):
 
   def __init__(self, node, parent):
@@ -592,6 +633,7 @@ class List(Expression):
   def __str__(self):
     return '[%s]' % ', '.join(str(e) for e in self.elts)
 
+@wraps(ast.Str)
 class Str(Expression):
 
   def __init__(self, node, parent):
@@ -613,6 +655,7 @@ class Str(Expression):
     else:
       return '%r' % self.value
 
+@wraps(ast.Num)
 class Num(Expression):
 
   def __init__(self, node, parent):
@@ -630,6 +673,7 @@ class Num(Expression):
   def __str__(self):
     return str(self.value)
 
+@wraps(ast.Subscript)
 class Subscript(Expression):
 
   def __init__(self, node, parent):
@@ -644,6 +688,7 @@ class Subscript(Expression):
   def __str__(self):
     return '%s[%s]' % (self.value, self.slice)
 
+@wraps(ast.Index)
 class Index(Expression):
 
   def __init__(self, node, parent):
@@ -657,6 +702,7 @@ class Index(Expression):
   def __str__(self):
     return str(self.value)
 
+@wraps(ast.BoolOp)
 class BoolOp(Expression):
 
   def __init__(self, node, parent):
@@ -676,6 +722,7 @@ class BoolOp(Expression):
     else:
       assert False, "Unsupported boolean operator %s" % self.op
 
+@wraps(ast.UnaryOp)
 class UnaryOp(Expression):
 
   def __init__(self, node, parent):
@@ -691,6 +738,7 @@ class UnaryOp(Expression):
     op = operator_to_symbol(self.op)
     return '%s %s' % (op, self.operand)
 
+@wraps(ast.Compare)
 class Compare(Expression):
 
   def __init__(self, node, parent):
@@ -713,6 +761,7 @@ class Compare(Expression):
       text += ' %s %s' % (op, subject)
     return text
 
+@wraps(ast.Break)
 class Break(Statement):
 
   def __init__(self, node, parent):
@@ -726,6 +775,7 @@ class Break(Statement):
   def __str__(self):
     return 'break'
 
+@wraps(ast.Global)
 class Global(Statement):
 
   def __init__(self, node, parent):
@@ -739,6 +789,7 @@ class Global(Statement):
   def __str__(self):
     return 'global %s' % ', '.join(str(g) for g in self.names)
 
+@wraps(ast.Delete)
 class Delete(Statement):
 
   def __init__(self, node, parent):
@@ -752,6 +803,7 @@ class Delete(Statement):
   def __str__(self):
     return 'delete %s' % ', '.join(str(t) for t in self.targets)
 
+@wraps(ast.Ellipsis)
 class Ellipsis(Statement):
 
   def __init__(self, node, parent):
@@ -765,6 +817,7 @@ class Ellipsis(Statement):
   def __str__(self):
     return '...'
 
+@wraps(ast.Lambda)
 class Lambda(Expression):
 
   def __init__(self, node, parent):
@@ -798,6 +851,7 @@ class Lambda(Expression):
       args.append('**' + str(self.kwarg))
     return 'lambda %s: %s' % (', '.join(str(a) for a in args), self.body)
 
+@wraps(ast.Raise)
 class Raise(Statement):
 
   def __init__(self, node, parent):
@@ -823,6 +877,7 @@ class Raise(Statement):
       words.append(', '.join(args))
     return ' '.join(words)
 
+@wraps(ast.Slice)
 class Slice(Expression):
 
   def __init__(self, node, parent):
@@ -867,6 +922,7 @@ class Slice(Expression):
           self.lower, self.upper, self.step)
       assert False, "Should not happen?!"
 
+@wraps(ast.ExtSlice)
 class ExtSlice(Expression):
 
   def __init__(self, node, parent):
@@ -879,6 +935,7 @@ class ExtSlice(Expression):
   def __str__(self):
     return ', '.join(str(d) for d in self.dims)
 
+@wraps(ast.TryExcept)
 class TryExcept(Statement):
 
   def __init__(self, node, parent):
@@ -899,6 +956,7 @@ class TryExcept(Statement):
       text += 'else:\n' + indent(self.orelse)
     return text
 
+@wraps(ast.TryFinally)
 class TryFinally(Statement):
 
   def __init__(self, node, parent):
@@ -913,6 +971,7 @@ class TryFinally(Statement):
   def __str__(self):
     return '%s\nfinally:\n%s' % (self.body, indent(self.finalbody))
 
+@wraps(ast.Repr)
 class Repr(Expression):
 
   def __init__(self, node, parent):
@@ -926,6 +985,7 @@ class Repr(Expression):
   def __str__(self):
     return 'repr(%s)' % self.value
 
+@wraps(ast.ExceptHandler)
 class ExceptHandler(Statement):
 
   def __init__(self, node, parent):
@@ -951,6 +1011,7 @@ class ExceptHandler(Statement):
         text += ', %s' % self.name
     return text + ':\n' + indent(self.body)
 
+@wraps(ast.With)
 class With(Statement):
 
   def __init__(self, node, parent):
@@ -971,60 +1032,6 @@ class With(Statement):
     if self.optional_vars:
       text += ' as %s' % self.optional_vars
     return '%s:\n%s' % (text, indent(self.body))
-
-type_mapping = {
-    id(ast.Module): Module,
-    id(ast.BoolOp): BoolOp,
-    id(ast.UnaryOp): UnaryOp,
-    id(ast.Compare): Compare,
-    id(ast.Slice): Slice,
-    id(ast.ExtSlice): ExtSlice,
-    id(ast.With): With,
-    id(ast.ClassDef): ClassDef,
-    id(ast.FunctionDef): FunctionDef,
-    id(ast.Import): Import,
-    id(ast.ImportFrom): ImportFrom,
-    id(ast.alias): Alias,
-    id(ast.If): If,
-    id(ast.For): For,
-    id(ast.ExceptHandler): ExceptHandler,
-    id(ast.Index): Index,
-    id(ast.While): While,
-    id(ast.Print): Print,
-    id(ast.Return): Return,
-    id(ast.Yield): Yield,
-    id(ast.Expr): Expression,
-    id(ast.IfExp): IfExp,
-    id(ast.GeneratorExp): GeneratorExp,
-    id(ast.comprehension): Comprehension,
-    id(ast.ListComp): ListComprehension,
-    id(ast.Break): Break,
-    id(ast.BinOp): BinOp,
-    id(ast.Exec): Exec,
-    id(ast.Global): Global,
-    id(ast.Raise): Raise,
-    id(ast.Pass): Pass,
-    id(ast.AugAssign): AugAssign,
-    id(ast.Repr): Repr,
-    id(ast.Ellipsis): Ellipsis,
-    id(ast.Lambda): Lambda,
-    id(ast.Continue): Continue,
-    id(ast.Subscript): Subscript,
-    id(ast.Assign): Assign,
-    id(ast.Assert): Assert,
-    id(ast.TryExcept): TryExcept,
-    id(ast.TryFinally): TryFinally,
-    id(ast.Tuple): Tuple,
-    id(ast.Call): Call,
-    id(ast.Delete): Delete,
-    id(ast.keyword): Keyword,
-    id(ast.Attribute): Attribute,
-    id(ast.Name): Name,
-    id(ast.Dict): Dictionary,
-    id(ast.List): List,
-    id(ast.Str): Str,
-    id(ast.Num): Num,
-}
 
 def find_function_definitions(name):
   ''' Yield the function definitions that might be related to a node. '''
@@ -1109,7 +1116,6 @@ def get_tree(source):
   global tree
   tree = wrap(ast.parse(source))
   return tree
-
 
 if __name__ == '__main__':
   with open(__file__) as handle:
