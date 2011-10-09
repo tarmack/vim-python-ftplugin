@@ -2,10 +2,10 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart kroon <bart@tarmack.eu>
-" Last Change: October 8, 2011
+" Last Change: October 9, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin#version = '0.6.2'
+let g:python_ftplugin#version = '0.6.3'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! s:infer_types(base) " {{{1
