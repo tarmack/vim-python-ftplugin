@@ -1,4 +1,11 @@
-# TODO Nested yields don't work in Python, are there any nice alternatives?
+# Type inference engine for the Python file type plug-in for Vim.
+# Authors:
+#  - Peter Odding <peter@peterodding.com>
+#  - Bart kroon <bart@tarmack.eu>
+# Last Change: October 8, 2011
+# URL: https://github.com/tarmack/vim-python-ftplugin
+
+# TODO Nested yields don't work in Python, are there any nice alternatives? (I miss Lua's coroutines)
 # http://groups.google.com/group/comp.lang.python/browse_frm/thread/fcd2709952d23e34?hl=en&lr=&ie=UTF-8&rnum=9&prev=/&frame=on
 
 import ast
@@ -165,6 +172,7 @@ class TypeInferenceEngine:
       yield node
     elif isinstance(node, ast.Call):
       # Function call.
+      # FIXME node.func can be an ast.Attribute!
       name = getattr(node.func, 'id', None)
       if name in BUILTINS:
         # Call to built-in (int(), str(), len(), max(), etc).
@@ -218,7 +226,6 @@ class TypeInferenceEngine:
   def find_function_calls(self, node):
     ''' Yield the function/method calls that might be related to a node. '''
     assert isinstance(node, ast.FunctionDef)
-    # TODO Not yet used!
     for n in ast.walk(self.tree):
       if isinstance(n, ast.Call) and self.call_to_name(n) == node.name:
         yield n
