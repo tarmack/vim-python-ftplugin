@@ -26,6 +26,10 @@ class Expression(Node):
     self.parent = parent
     self.value = wrap(node.value, self)
 
+  @property
+  def attrs(self):
+    return self.value.attrs
+
   def __iter__(self):
     return iter([self.value])
 
@@ -54,6 +58,11 @@ class ClassDef(Statement):
     self.bases = wrap(node.bases)
     self.body = wrap(node.body, self)
 
+  @property
+  def attrs(self):
+    # TODO Implement.
+    return []
+
   def __iter__(self):
     yield self.name
     for base in self.bases:
@@ -78,6 +87,14 @@ class FunctionDef(Statement):
     self.vararg = wrap(node.args.vararg, self) if node.args.vararg else None
     self.kwarg = wrap(node.args.kwarg, self) if node.args.kwarg else None
     self.body = wrap(node.body, self)
+
+  @property
+  def attrs(self):
+    results = []
+    for obj in self.body:
+      if isinstance(obj, Return):
+        results.extend(obj.attrs)
+    return results
 
   def __iter__(self):
     for argument in self.args:
@@ -238,6 +255,10 @@ class Return(Statement):
     #log("Constructing return statement ..")
     self.value = wrap(node.value, self)
 
+  @property
+  def attrs(self):
+    return self.value.attrs
+
   def __iter__(self):
     return iter([self.value])
   
@@ -304,6 +325,10 @@ class Assign(Statement):
     #log("Constructing assignment statement ..")
     self.targets = wrap(node.targets, self)
     self.value = wrap(node.value, self)
+
+  @property
+  def attrs(self):
+    return self.value.attrs
 
   def __iter__(self):
     return iter(self.targets + [self.value])
@@ -411,6 +436,10 @@ class Tuple(Expression):
     #log("Constructing tuple expression ..")
     self.elts = wrap(node.elts, self)
 
+  @property
+  def attrs(self):
+    return dir(tuple)
+
   def __iter__(self):
     return iter(self.elts)
 
@@ -428,6 +457,14 @@ class Call(Expression):
     self.starargs = wrap(node.starargs, self)
     self.kwargs = wrap(node.kwargs, self)
 
+  @property
+  def attrs(self):
+    result = []
+    name = self.func.value
+    for obj in find_function_definitions(name):
+      result.extend(obj.attrs)
+    return result
+
   def __iter__(self):
     for node in self.func:
       yield node
@@ -439,7 +476,7 @@ class Call(Expression):
       yield self.starargs
     if self.kwargs:
       yield self.kwargs
-  
+
   def __str__(self):
     args = [str(a) for a in self.args]
     args.extend(str(k) for k in self.keywords)
@@ -503,6 +540,15 @@ class Name(Expression):
     #log("Constructing name expression %s from %s ..", node.id, ast.dump(node))
     self.value = node.id
 
+  @property
+  def attrs(self):
+    result = []
+    name = self.value
+    for node in find_assignment(name):
+      result.extend(node.attrs)
+    return result
+
+
   def __iter__(self):
     return iter([self.value])
 
@@ -516,6 +562,10 @@ class Dictionary(Expression):
     #log("Constructing dictionary expression ..")
     self.keys = wrap(node.keys, self)
     self.values = wrap(node.values, self)
+
+  @property
+  def attrs(self):
+    return dir(dict)
 
   def __iter__(self):
     return iter(self.keys + self.values)
@@ -532,6 +582,10 @@ class List(Expression):
     #log("Constructing list expression ..")
     self.elts = wrap(node.elts, self)
 
+  @property
+  def attrs(self):
+    return dir(list)
+
   def __iter__(self):
     return iter(self.elts)
 
@@ -544,6 +598,10 @@ class Str(Expression):
     self.parent = parent
     #log("Constructing string expression ..")
     self.value = node.s
+
+  @property
+  def attrs(self):
+    return dir(str)
 
   def __iter__(self):
     return iter([self.value])
@@ -561,6 +619,10 @@ class Num(Expression):
     self.parent = parent
     #log("Constructing number expression ..")
     self.value = node.n
+
+  @property
+  def attrs(self):
+    return dir(self.value)
 
   def __iter__(self):
     return iter([self.value])
@@ -964,6 +1026,35 @@ type_mapping = {
     id(ast.Num): Num,
 }
 
+def find_function_definitions(name):
+  ''' Yield the function definitions that might be related to a node. '''
+  global tree
+  for node in tree:
+    if isinstance(node, FunctionDef) and node.name == name:
+      yield node
+
+def find_assignment(name):
+  global tree
+  for node in tree:
+    if isinstance(node, Assign):
+      for n in flatten(node.targets):
+        if n.value == name:
+          yield node
+
+def flatten(nested, flat=None):
+  ''' Squash a nested sequence into a flat list of nodes. '''
+  if flat is None:
+    flat = []
+  if isinstance(nested, (Tuple, List)):
+    for node in nested.elts:
+      flatten(node, flat)
+  elif isinstance(nested, (tuple, list)):
+    for node in nested:
+      flatten(node, flat)
+  else:
+    flat.append(nested)
+  return flat
+
 def wrap(value, parent=None):
   if not value or isinstance(value, (numbers.Number, basestring)):
     # Nothing to wrap.
@@ -1012,6 +1103,13 @@ def indent(block):
   if isinstance(block, list):
     block = '\n'.join(str(n) for n in block)
   return '  ' + block.replace('\n', '\n  ')
+
+def get_tree(source):
+  assert isinstance(source, basestring)
+  global tree
+  tree = wrap(ast.parse(source))
+  return tree
+
 
 if __name__ == '__main__':
   with open(__file__) as handle:
