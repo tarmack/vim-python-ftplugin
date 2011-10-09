@@ -1,8 +1,8 @@
 # Type inference engine for the Python file type plug-in for Vim.
 # Authors:
 #  - Peter Odding <peter@peterodding.com>
-#  - Bart kroon <bart@tarmack.eu>
-# Last Change: October 8, 2011
+#  - Bart Kroon <bart@tarmack.eu>
+# Last Change: October 9, 2011
 # URL: https://github.com/tarmack/vim-python-ftplugin
 
 # TODO Nested yields don't work in Python, are there any nice alternatives? (I miss Lua's coroutines)
@@ -52,14 +52,14 @@ def log(msg, *args):
 
 def complete_inferred_types():
   import vim
-  try:
-    engine = TypeInferenceEngine(vim.eval('source'))
-    line = int(vim.eval('line'))
-    column = int(vim.eval('column'))
-    for candidate in engine.complete(line, column):
-      print candidate
-  except Exception, e:
-    log("Warning: %s", e)
+  engine = TypeInferenceEngine(vim.eval('source'))
+  line = int(vim.eval('line'))
+  column = int(vim.eval('column'))
+  for name, types in engine.complete(line, column).iteritems():
+    fields = [name]
+    for t in types:
+      fields.append(t.__name__)
+    print '|'.join(fields)
 
 class TypeInferenceEngine:
 
@@ -70,10 +70,11 @@ class TypeInferenceEngine:
   def complete(self, line, column):
     node = self.find_node(line, column)
     if node:
-      candidates = list()
-      for type in self.evaluate(node):
-        candidates.extend(dir(type))
-      return sorted(set(candidates), key=lambda c: c.lower().replace('_', '~'))
+      candidates = collections.defaultdict(list)
+      for possible_type in self.evaluate(node):
+        for name in dir(possible_type):
+          candidates[name].append(possible_type)
+      return candidates
 
   def link_parents(self, node):
     ''' Decorate the AST with child -> parent references. '''

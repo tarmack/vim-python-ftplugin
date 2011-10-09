@@ -1,8 +1,8 @@
 # Supporting functions for the Python file type plug-in for Vim.
 # Authors:
 #  - Peter Odding <peter@peterodding.com>
-#  - Bart kroon <bart@tarmack.eu>
-# Last Change: September 6, 2011
+#  - Bart Kroon <bart@tarmack.eu>
+# Last Change: October 9, 2011
 # URL: https://github.com/tarmack/vim-python-ftplugin
 
 import __builtin__
