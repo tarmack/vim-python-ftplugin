@@ -8,7 +8,8 @@
 import ast
 import numbers
 import collections
-import sys
+
+DEBUG = True
 
 def log(msg, *args):
   print msg % args
@@ -45,15 +46,23 @@ class Module(Statement):
 class ClassDef(Statement):
 
   def __init__(self, node):
+    #log("Constructing class from %s ..", ast.dump(node))
     self.name = wrap(node.name)
-    #log("Constructing class %s ..", self.name)
+    self.bases = wrap(node.bases)
     self.body = wrap(node.body)
 
   def __iter__(self):
-    return iter(self.body)
+    yield self.name
+    for base in self.bases:
+      yield base
+    for node in self.body:
+      yield node
 
   def __str__(self):
-    return 'class %s:\n%s' % (self.name, indent(self.body))
+    text = 'class %s' % self.name
+    if self.bases:
+      text += '(%s)' % ', '.join(str(b) for b in self.bases)
+    return text + ':\n%s' % indent(self.body)
 
 class FunctionDef(Statement):
 
@@ -86,7 +95,7 @@ class FunctionDef(Statement):
       args.append('*' + str(self.vararg))
     if self.kwarg:
       args.append('**' + str(self.kwarg))
-    return 'function %s(%s):\n%s' % (
+    return 'def %s(%s):\n%s' % (
         self.name,
         ', '.join(str(a) for a in args),
         indent(self.body))
@@ -234,6 +243,18 @@ class Yield(Statement):
   
   def __str__(self):
     return 'yield %s' % self.value
+
+class Continue(Statement):
+
+  def __init__(self, node):
+    #log("Constructing continue statement ..")
+    pass
+
+  def __iter__(self):
+    return iter([])
+  
+  def __str__(self):
+    return 'continue'
 
 class Pass(Statement):
 
@@ -415,6 +436,25 @@ class Keyword(Expression):
   def __str__(self):
     return '%s=%s' % (self.arg, self.value)
 
+class Exec(Statement):
+
+  def __init__(self, node):
+    #log("Constructing exec statement from %s ..", ast.dump(node))
+    self.body = wrap(node.body)
+    self.globals = wrap(node.globals)
+    self.locals = wrap(node.locals)
+
+  def __iter__(self):
+    return iter([self.globals, self.locals] + self.body)
+
+  def __str__(self):
+    text = 'exec %s' % self.body
+    if self.globals:
+      text += ' in %s' % self.globals
+      if self.locals:
+        text += ', %s' % self.locals
+    return text
+
 class Attribute(Expression):
 
   def __init__(self, node):
@@ -477,7 +517,11 @@ class Str(Expression):
     return iter([self.value])
 
   def __str__(self):
-    return '%r' % self.value
+    if DEBUG:
+      # Don't dump long strings completely.
+      return '%r' % self.value[:25]
+    else:
+      return '%r' % self.value
 
 class Num(Expression):
 
@@ -545,10 +589,8 @@ class UnaryOp(Expression):
     yield self.operand
 
   def __str__(self):
-    if isinstance(self.op, ast.Not):
-      return 'not %s' % self.operand
-    else:
-      assert False, "Unsupported unary operator %s" % self.op
+    op = operator_to_symbol(self.op)
+    return '%s %s' % (op, self.operand)
 
 class Compare(Expression):
 
@@ -564,8 +606,238 @@ class Compare(Expression):
       yield node
 
   def __str__(self):
-    # TODO str(Compare)
-    return 'COMPARISON OF %s' % self.left
+    text = str(self.left)
+    for i in xrange(len(self.ops)):
+      op = operator_to_symbol(self.ops[i])
+      subject = self.comparators[i]
+      text += ' %s %s' % (op, subject)
+    return text
+
+class Break(Statement):
+
+  def __init__(self, node):
+    #log("Constructing break statement from %s", ast.dump(node))
+    pass
+
+  def __iter__(self):
+    return iter([])
+
+  def __str__(self):
+    return 'break'
+
+class Global(Statement):
+
+  def __init__(self, node):
+    #log("Constructing global statement from %s", ast.dump(node))
+    self.names = wrap(node.names)
+
+  def __iter__(self):
+    return iter(self.names)
+
+  def __str__(self):
+    return 'global %s' % ', '.join(str(g) for g in self.names)
+
+class Delete(Statement):
+
+  def __init__(self, node):
+    #log("Constructing delete statement from %s", ast.dump(node))
+    self.targets = wrap(node.targets)
+
+  def __iter__(self):
+    return iter(self.targets)
+
+  def __str__(self):
+    return 'delete %s' % ', '.join(str(t) for t in self.targets)
+
+class Ellipsis(Statement):
+
+  def __init__(self, node):
+    #log("Constructing ellipsis expression from %s", ast.dump(node))
+    pass
+
+  def __iter__(self):
+    return iter([])
+
+  def __str__(self):
+    return '...'
+
+class Lambda(Expression):
+
+  def __init__(self, node):
+    #log("Constructing lambda expression from %s", ast.dump(node))
+    self.args = wrap(node.args.args)
+    self.defaults = wrap(node.args.defaults)
+    self.vararg = wrap(node.args.vararg) if node.args.vararg else None
+    self.kwarg = wrap(node.args.kwarg) if node.args.kwarg else None
+    self.body = wrap(node.body)
+
+  def __iter__(self):
+    for argument in self.args:
+      yield argument
+    for default in self.defaults:
+      yield default
+    if self.vararg:
+      yield self.vararg
+    if self.kwarg:
+      yield self.kwarg
+    for child in self.body:
+      yield child
+
+  def __str__(self):
+    args = []
+    args.extend(self.args)
+    args.extend(self.defaults)
+    if self.vararg:
+      args.append('*' + str(self.vararg))
+    if self.kwarg:
+      args.append('**' + str(self.kwarg))
+    return 'lambda %s: %s' % (', '.join(str(a) for a in args), self.body)
+
+class Raise(Statement):
+
+  def __init__(self, node):
+    #log("Constructing raise statement from %s", ast.dump(node))
+    self.type = wrap(node.type)
+    self.inst = wrap(node.inst)
+
+  def __iter__(self):
+    if self.type:
+      yield self.type
+    if self.inst:
+      yield self.inst
+
+  def __str__(self):
+    args = []
+    if self.type:
+      args.append(str(self.type))
+    if self.inst:
+      args.append(str(self.inst))
+    words = ['raise']
+    if args:
+      words.append(', '.join(args))
+    return ' '.join(words)
+
+class Slice(Expression):
+
+  def __init__(self, node):
+    #log("Constructing slice expression from %s", ast.dump(node))
+    self.lower = wrap(node.lower)
+    self.upper = wrap(node.upper)
+    self.step = wrap(node.step)
+
+  def __iter__(self):
+    if self.lower:
+      yield self.lower
+    if self.upper:
+      yield self.upper
+    if self.step:
+      yield self.step
+
+  def __str__(self):
+
+    parts = []
+    parts.append(str(self.lower) if self.lower is not None else '')
+    parts.append(str(self.upper) if self.upper is not None else '')
+    parts.append(str(self.step) if self.step is not None else '')
+    return ':'.join(parts)
+
+    if self.lower and self.upper and self.step:
+      return '%s:%s:%s' % (self.lower, self.upper, self.step)
+    elif self.lower and self.upper and not self.step:
+      return '%s:%s' % (self.lower, self.upper)
+    elif self.lower and not self.upper and not self.step:
+      return '%s:' % self.lower
+    elif self.lower and self.step and not self.upper:
+      return '%s::%s' % (self.lower, self.step)
+    elif self.upper and not self.lower and not self.step:
+      return ':%s' % self.upper
+    elif self.step and not self.upper and not self.lower:
+      return '::%s' % self.step
+    elif not (self.lower or self.upper or self.step):
+      return ':'
+    else:
+      log("Failed to pretty print slice! lower=%s, upper=%s, step=%s",
+          self.lower, self.upper, self.step)
+      assert False, "Should not happen?!"
+
+class ExtSlice(Expression):
+
+  def __init__(self, node):
+    self.dims = wrap(node.dims)
+
+  def __iter__(self):
+    return iter(self.dims)
+
+  def __str__(self):
+    return ', '.join(str(d) for d in self.dims)
+
+class TryExcept(Statement):
+
+  def __init__(self, node):
+    #log("Constructing try/except statement from %s", ast.dump(node))
+    self.body = wrap(node.body)
+    self.handlers = wrap(node.handlers)
+    self.orelse = wrap(node.orelse)
+
+  def __iter__(self):
+    return iter(self.body + self.handlers + self.orelse)
+
+  def __str__(self):
+    text = 'try:\n' + indent(self.body)
+    for handler in self.handlers:
+      text += '\n' + str(handler)
+    if self.orelse:
+      text += 'else:\n' + indent(self.orelse)
+    return text
+
+class TryFinally(Statement):
+
+  def __init__(self, node):
+    #log("Constructing try/finally statement from %s", ast.dump(node))
+    self.body = wrap(node.body)
+    self.finalbody = wrap(node.finalbody)
+
+  def __iter__(self):
+    return iter(self.body + self.finalbody)
+
+  def __str__(self):
+    return '%s\nfinally:\n%s' % (self.body, indent(self.finalbody))
+
+class Repr(Expression):
+
+  def __init__(self, node):
+    #log("Constructing repr() expression from %s", ast.dump(node))
+    self.value = wrap(node.value)
+
+  def __iter__(self):
+    return iter([self.value])
+
+  def __str__(self):
+    return 'repr(%s)' % self.value
+
+class ExceptHandler(Statement):
+
+  def __init__(self, node):
+    #log("Constructing try/except handler statement from %s", ast.dump(node))
+    self.type = wrap(node.type)
+    self.name = wrap(node.name)
+    self.body = wrap(node.body)
+
+  def __iter__(self):
+    if self.type:
+      yield self.type
+    if self.name:
+      yield self.name
+    for node in self.body:
+      yield node
+
+  def __str__(self):
+    text = 'except'
+    if self.type:
+      text += ' %s' % self.type
+      if self.name:
+        text += ', %s' % self.name
+    return text + ':\n' + indent(self.body)
 
 class With(Statement):
 
@@ -592,6 +864,8 @@ type_mapping = {
     id(ast.BoolOp): BoolOp,
     id(ast.UnaryOp): UnaryOp,
     id(ast.Compare): Compare,
+    id(ast.Slice): Slice,
+    id(ast.ExtSlice): ExtSlice,
     id(ast.With): With,
     id(ast.ClassDef): ClassDef,
     id(ast.FunctionDef): FunctionDef,
@@ -600,6 +874,7 @@ type_mapping = {
     id(ast.alias): Alias,
     id(ast.If): If,
     id(ast.For): For,
+    id(ast.ExceptHandler): ExceptHandler,
     id(ast.Index): Index,
     id(ast.While): While,
     id(ast.Print): Print,
@@ -610,14 +885,25 @@ type_mapping = {
     id(ast.GeneratorExp): GeneratorExp,
     id(ast.comprehension): Comprehension,
     id(ast.ListComp): ListComprehension,
+    id(ast.Break): Break,
     id(ast.BinOp): BinOp,
+    id(ast.Exec): Exec,
+    id(ast.Global): Global,
+    id(ast.Raise): Raise,
     id(ast.Pass): Pass,
     id(ast.AugAssign): AugAssign,
+    id(ast.Repr): Repr,
+    id(ast.Ellipsis): Ellipsis,
+    id(ast.Lambda): Lambda,
+    id(ast.Continue): Continue,
     id(ast.Subscript): Subscript,
     id(ast.Assign): Assign,
     id(ast.Assert): Assert,
+    id(ast.TryExcept): TryExcept,
+    id(ast.TryFinally): TryFinally,
     id(ast.Tuple): Tuple,
     id(ast.Call): Call,
+    id(ast.Delete): Delete,
     id(ast.keyword): Keyword,
     id(ast.Attribute): Attribute,
     id(ast.Name): Name,
@@ -644,16 +930,38 @@ def wrap(value):
 
 def operator_to_symbol(op):
   if isinstance(op, ast.Add): return '+'
-  if isinstance(op, ast.Sub): return '-'
-  if isinstance(op, ast.Mult): return '*'
+  if isinstance(op, ast.UAdd): return '+'
+  if isinstance(op, ast.FloorDiv): return '//'
+  if isinstance(op, ast.BitAnd): return '&'
+  if isinstance(op, ast.BitOr): return '|'
+  if isinstance(op, ast.BitXor): return '^'
+  if isinstance(op, ast.LShift): return '<<'
+  if isinstance(op, ast.RShift): return '>>'
   if isinstance(op, ast.Div): return '/'
+  if isinstance(op, ast.Eq): return '=='
+  if isinstance(op, ast.Gt): return '>'
+  if isinstance(op, ast.GtE): return '>='
+  if isinstance(op, ast.In): return 'in'
+  if isinstance(op, ast.Invert): return '~'
+  if isinstance(op, ast.Lt): return '<'
+  if isinstance(op, ast.USub): return '-'
+  if isinstance(op, ast.Pow): return '**'
+  if isinstance(op, ast.LtE): return '<='
+  if isinstance(op, ast.IsNot): return 'is not'
+  if isinstance(op, ast.Is): return 'is'
   if isinstance(op, ast.Mod): return '%'
-  assert False, "Operator %s not yet supported!" % op
+  if isinstance(op, ast.Mult): return '*'
+  if isinstance(op, ast.Not): return 'not'
+  if isinstance(op, ast.NotEq): return '!='
+  if isinstance(op, ast.NotIn): return 'not in'
+  if isinstance(op, ast.Sub): return '-'
+  assert False, "Operator %s not yet supported! (%s)" % (op, ast.dump(op))
 
 def indent(block):
   if isinstance(block, list):
     block = '\n'.join(str(n) for n in block)
   return '  ' + block.replace('\n', '\n  ')
 
-with open(__file__) as handle:
-  print wrap(ast.parse(handle.read()))
+if __name__ == '__main__':
+  with open(__file__) as handle:
+    print wrap(ast.parse(handle.read()))
