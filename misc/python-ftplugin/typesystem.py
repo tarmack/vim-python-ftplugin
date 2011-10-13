@@ -75,7 +75,7 @@ class Expression(Node):
     return self.value.attrs
 
   def __iter__(self):
-    return iter([self.value])
+    yield self.value
 
   def __str__(self):
     return str(self.value)
@@ -100,7 +100,8 @@ class ClassDef(Statement):
   def __init__(self, node, parent):
     #log("Constructing class from %s ..", ast.dump(node))
     Node.__init__(self, node, parent)
-    self.name = wrap(node.name, self)
+    self.decorator_list = wrap(node.decorator_list, self)
+    self.name = node.name
     self.bases = wrap(node.bases)
     self.body = wrap(node.body, self)
 
@@ -118,11 +119,7 @@ class ClassDef(Statement):
     return results
 
   def __iter__(self):
-    yield self.name
-    for base in self.bases:
-      yield base
-    for node in self.body:
-      yield node
+    return iter(self.decorator_list + self.bases + self.body)
 
   def __str__(self):
     text = 'class %s' % self.name
@@ -135,12 +132,13 @@ class FunctionDef(Statement):
 
   def __init__(self, node, parent):
     Node.__init__(self, node, parent)
-    self.name = wrap(node.name, self)
+    self.name = node.name
     #log("Constructing function %s ..", self.name)
+    self.decorator_list = wrap(node.decorator_list, self)
     self.args = wrap(node.args.args, self)
     self.defaults = wrap(node.args.defaults, self)
-    self.vararg = wrap(node.args.vararg, self) if node.args.vararg else None
-    self.kwarg = wrap(node.args.kwarg, self) if node.args.kwarg else None
+    self.vararg = node.args.vararg
+    self.kwarg = node.args.kwarg
     self.body = wrap(node.body, self)
 
   @property
@@ -152,16 +150,7 @@ class FunctionDef(Statement):
     return results
 
   def __iter__(self):
-    for argument in self.args:
-      yield argument
-    for default in self.defaults:
-      yield default
-    if self.vararg:
-      yield self.vararg
-    if self.kwarg:
-      yield self.kwarg
-    for child in self.body:
-      yield child
+    return iter(self.decorator_list + self.args + self.defaults + self.body)
 
   def __str__(self):
     args = []
@@ -196,11 +185,11 @@ class ImportFrom(Statement):
   def __init__(self, node, parent):
     Node.__init__(self, node, parent)
     #log("Constructing ImportFrom statement from %s", ast.dump(node))
-    self.module = wrap(node.module, self)
+    self.module = node.module
     self.names = wrap(node.names, self)
 
   def __iter__(self):
-    return iter([self.module] + self.names)
+    return iter(self.names)
 
   def __str__(self):
     return "from %s import %s" % (self.module,
@@ -211,11 +200,11 @@ class Alias(Expression):
 
   def __init__(self, node, parent):
     Node.__init__(self, node, parent)
-    self.name = wrap(node.name, self)
-    self.asname = wrap(node.asname, self)
+    self.name = node.name
+    self.asname = node.asname
 
   def __iter__(self):
-    return iter([self.name, self.asname])
+    return iter([])
 
   def __str__(self):
     text = str(self.name)
@@ -234,11 +223,7 @@ class If(Statement):
     self.orelse = wrap(node.orelse, self)
 
   def __iter__(self):
-    yield self.test
-    for child in self.body:
-      yield child
-    for child in self.orelse:
-      yield child
+    return iter([self.test] + self.body + self.orelse)
 
   def __str__(self):
     lines = ['if %s:' % self.test]
@@ -260,12 +245,7 @@ class For(Statement):
     self.orelse = wrap(node.orelse, self)
 
   def __iter__(self):
-    yield self.target
-    yield self.iter
-    for node in self.body:
-      yield node
-    for node in self.orelse:
-      yield node
+    return iter([self.target, self.iter] + self.body + self.orelse)
 
   def __str__(self):
     lines = ['for %s in %s:' % (self.target, self.iter)]
@@ -323,7 +303,8 @@ class Return(Statement):
     return self.value.attrs
 
   def __iter__(self):
-    return iter([self.value])
+    if self.value:
+      yield self.value
 
   def __str__(self):
     return 'return %s' % self.value
@@ -337,7 +318,7 @@ class Yield(Statement):
     self.value = wrap(node.value, self)
 
   def __iter__(self):
-    return iter([self.value])
+    yield self.value
 
   def __str__(self):
     return 'yield %s' % self.value
@@ -380,7 +361,9 @@ class Assert(Statement):
     self.msg = wrap(node.msg, self)
 
   def __iter__(self):
-    return iter([self.test, self.msg])
+    yield self.test
+    if self.msg is not None:
+      yield self.msg
 
   def __str__(self):
     return 'assert %s, %s' % (self.test, self.msg)
@@ -415,7 +398,8 @@ class AugAssign(Statement):
     self.op = node.op
 
   def __iter__(self):
-    return iter([self.target, self.value])
+    yield self.target
+    yield self.value
 
   def __str__(self):
     return '%s %s= %s' % (self.target, operator_to_symbol(self.op), self.value)
@@ -431,7 +415,8 @@ class BinOp(Expression):
     self.op = node.op
 
   def __iter__(self):
-    return iter([self.left, self.right])
+    yield self.left
+    yield self.right
 
   def __str__(self):
     return '%s %s %s' % (self.left, operator_to_symbol(self.op), self.right)
@@ -447,7 +432,17 @@ class IfExp(Expression):
     self.orelse = wrap(node.orelse, self)
 
   def __iter__(self):
-    return iter([self.test] + self.body + self.orelse)
+    items = [self.test]
+    # In inline if/else expressions body and orelse are not lists.
+    if isinstance(self.body, collections.Iterator):
+      items.extend(self.body)
+    else:
+      items.append(self.body)
+    if isinstance(self.orelse, collections.Iterator):
+      items.extend(self.orelse)
+    else:
+      items.append(self.orelse)
+    return iter(items)
 
   def __str__(self):
     return '%s if %s else %s' % (self.body, self.test, self.orelse)
@@ -462,9 +457,7 @@ class GeneratorExp(Expression):
     self.generators = wrap(node.generators, self)
 
   def __iter__(self):
-    yield self.elt
-    for node in self.generators:
-      yield node
+    return iter([self.elt] + self.generators)
 
   def __str__(self):
     return '(%s for %s)' % (self.elt,
@@ -476,12 +469,12 @@ class Comprehension(Expression):
   def __init__(self, node, parent):
     Node.__init__(self, node, parent)
     #log("Constructing comprehension from %s ..", ast.dump(node))
+    self.ifs = wrap(node.ifs, self)
     self.target = wrap(node.target, self)
     self.iter = wrap(node.iter, self)
 
   def __iter__(self):
-    yield self.target
-    yield self.iter
+    return iter([self.target, self.iter] + self.ifs)
 
   def __str__(self):
     return '%s in %s' % (self.target, self.iter)
@@ -554,16 +547,12 @@ class Call(Expression):
           yield node
 
   def __iter__(self):
-    for node in self.func:
-      yield node
-    for node in self.args:
-      yield node
-    for node in self.keywords:
-      yield node
+    items = [self.func] + self.args + self.keywords
     if self.starargs:
-      yield self.starargs
+      items.append(self.starargs)
     if self.kwargs:
-      yield self.kwargs
+      items.append(self.kwargs)
+    return iter(items)
 
   def __str__(self):
     args = [str(a) for a in self.args]
@@ -579,11 +568,11 @@ class Keyword(Expression):
 
   def __init__(self, node, parent):
     Node.__init__(self, node, parent)
-    self.arg = wrap(node.arg, self)
+    self.arg = node.arg
     self.value = wrap(node.value, self)
 
   def __iter__(self):
-    return iter([self.arg, self.value])
+    yield self.value
 
   def __str__(self):
     return '%s=%s' % (self.arg, self.value)
@@ -616,14 +605,14 @@ class Attribute(Expression):
     Node.__init__(self, node, parent)
     #log("Constructing attribute expression ..")
     self.value = wrap(node.value, self)
-    self.attr = wrap(node.attr, self)
+    self.attr = node.attr
 
   @property
   def attrs(self):
     pass
 
   def __iter__(self):
-    return iter([self.value, self.attr])
+    yield self.value
 
   def __str__(self):
     return str(self.value) + '.' + str(self.attr)
@@ -658,7 +647,7 @@ class Name(Expression):
               yield node
 
   def __iter__(self):
-    return iter([self.value])
+    return iter([])
 
   def __str__(self):
     return str(self.value)
@@ -715,7 +704,7 @@ class Str(Expression):
     return dir(str)
 
   def __iter__(self):
-    return iter([self.value])
+    return iter([])
 
   def __str__(self):
     if DEBUG:
@@ -737,7 +726,7 @@ class Num(Expression):
     return dir(self.value)
 
   def __iter__(self):
-    return iter([self.value])
+    return iter([])
 
   def __str__(self):
     return str(self.value)
@@ -752,7 +741,8 @@ class Subscript(Expression):
     self.slice = wrap(node.slice, self) # ast.Index
 
   def __iter__(self):
-    return iter([self.value, self.slice])
+    yield self.value
+    yield self.slice
 
   def __str__(self):
     return '%s[%s]' % (self.value, self.slice)
@@ -766,7 +756,7 @@ class Index(Expression):
     self.value = wrap(node.value, self)
 
   def __iter__(self):
-    return iter([self.value])
+    yield self.value
 
   def __str__(self):
     return str(self.value)
@@ -818,9 +808,7 @@ class Compare(Expression):
     self.comparators = wrap(node.comparators, self)
 
   def __iter__(self):
-    yield self.left
-    for node in self.comparators:
-      yield node
+    return iter([self.left] + self.comparators)
 
   def __str__(self):
     text = str(self.left)
@@ -850,10 +838,10 @@ class Global(Statement):
   def __init__(self, node, parent):
     Node.__init__(self, node, parent)
     #log("Constructing global statement from %s", ast.dump(node))
-    self.names = wrap(node.names)
+    self.names = node.names
 
   def __iter__(self):
-    return iter(self.names)
+    return iter([])
 
   def __str__(self):
     return 'global %s' % ', '.join(str(g) for g in self.names)
@@ -894,21 +882,12 @@ class Lambda(Expression):
     #log("Constructing lambda expression from %s", ast.dump(node))
     self.args = wrap(node.args.args)
     self.defaults = wrap(node.args.defaults)
-    self.vararg = wrap(node.args.vararg) if node.args.vararg else None
-    self.kwarg = wrap(node.args.kwarg) if node.args.kwarg else None
+    self.vararg = node.args.vararg
+    self.kwarg = node.args.kwarg
     self.body = wrap(node.body)
 
   def __iter__(self):
-    for argument in self.args:
-      yield argument
-    for default in self.defaults:
-      yield default
-    if self.vararg:
-      yield self.vararg
-    if self.kwarg:
-      yield self.kwarg
-    for child in self.body:
-      yield child
+    return iter(self.args + self.defaults + [self.body])
 
   def __str__(self):
     args = []
@@ -1049,7 +1028,7 @@ class Repr(Expression):
     self.value = wrap(node.value)
 
   def __iter__(self):
-    return iter([self.value])
+    yield self.value
 
   def __str__(self):
     return 'repr(%s)' % self.value
@@ -1065,12 +1044,13 @@ class ExceptHandler(Statement):
     self.body = wrap(node.body)
 
   def __iter__(self):
+    items = []
     if self.type:
-      yield self.type
+      items.append(self.type)
     if self.name:
-      yield self.name
-    for node in self.body:
-      yield node
+      items.append(self.name)
+    items += self.body
+    return iter(items)
 
   def __str__(self):
     text = 'except'
@@ -1091,10 +1071,7 @@ class With(Statement):
     self.body = wrap(node.body, self)
 
   def __iter__(self):
-    yield self.context_expr
-    yield self.optional_vars
-    for node in self.body:
-      yield node
+    return iter([self.context_expr, self.optional_vars] + self.body)
 
   def __str__(self):
     text = 'with %s' % self.context_expr
