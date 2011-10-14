@@ -58,6 +58,30 @@ class Node(object):
     self.column = getattr(node, 'col_offset', 0)
     self.line = getattr(node, 'lineno', 0)
 
+  def __iter__(self):
+    '''
+    Iterate over the direct child nodes of the current node.
+    '''
+    return iter(())
+
+  @property
+  def statements(self):
+    '''
+    Iterate over the direct child statements of the current node.
+    '''
+    for node in self:
+      if isinstance(node, Statement):
+        yield node
+
+  @property
+  def expressions(self):
+    '''
+    Iterate over the direct child expressions of the current node.
+    '''
+    for node in self:
+      if isinstance(node, Expression):
+        yield node
+
   @property
   def tree(self):
     '''
@@ -251,9 +275,6 @@ class Alias(Expression):
     self.name = node.name
     self.asname = node.asname
 
-  def __iter__(self):
-    return iter([])
-
   def __str__(self):
     text = str(self.name)
     if self.asname:
@@ -372,9 +393,6 @@ class Continue(Statement):
     Node.__init__(self, node, parent)
     pass
 
-  def __iter__(self):
-    return iter([])
-
   def __str__(self):
     return 'continue'
 
@@ -384,9 +402,6 @@ class Pass(Statement):
   def __init__(self, node, parent):
     Node.__init__(self, node, parent)
     pass
-
-  def __iter__(self):
-    return iter([])
 
   def __str__(self):
     return 'pass'
@@ -673,9 +688,6 @@ class Name(Expression):
               found = True
               yield node
 
-  def __iter__(self):
-    return iter([])
-
   def __str__(self):
     return str(self.value)
 
@@ -727,9 +739,6 @@ class Str(Expression):
   def attrs(self):
     return dir(str)
 
-  def __iter__(self):
-    return iter([])
-
   def __str__(self):
     if DEBUG:
       # Don't dump long strings completely.
@@ -747,9 +756,6 @@ class Num(Expression):
   @property
   def attrs(self):
     return dir(self.value)
-
-  def __iter__(self):
-    return iter([])
 
   def __str__(self):
     return str(self.value)
@@ -843,9 +849,6 @@ class Break(Statement):
     Node.__init__(self, node, parent)
     pass
 
-  def __iter__(self):
-    return iter([])
-
   def __str__(self):
     return 'break'
 
@@ -855,9 +858,6 @@ class Global(Statement):
   def __init__(self, node, parent):
     Node.__init__(self, node, parent)
     self.names = node.names
-
-  def __iter__(self):
-    return iter([])
 
   def __str__(self):
     return 'global %s' % ', '.join(str(g) for g in self.names)
@@ -881,9 +881,6 @@ class Ellipsis(Statement):
   def __init__(self, node, parent):
     Node.__init__(self, node, parent)
     pass
-
-  def __iter__(self):
-    return iter([])
 
   def __str__(self):
     return '...'
