@@ -152,6 +152,20 @@ class Expression(Node):
   '''
   pass
 
+class LiteralValue(Expression):
+
+  '''
+  Abstract class for literal values in the parse tree.
+  '''
+
+  @property
+  def type_name(self):
+    return self.python_type.__name__
+
+  @property
+  def attrs(self):
+    return dir(self.python_type)
+
 @wraps(ast.Expr)
 class Expr(Expression):
 
@@ -697,16 +711,6 @@ class Name(Expression):
 
   def __str__(self):
     return str(self.value)
-
-class LiteralValue(Expression):
-
-  @property
-  def type_name(self):
-    return self.python_type.__name__
-
-  @property
-  def attrs(self):
-    return dir(self.python_type)
 
 @wraps(ast.Dict)
 class Dictionary(LiteralValue):
