@@ -93,6 +93,19 @@ class Node(object):
       for child in node.walk():
         yield child
 
+  def locate(self, line, column):
+    '''
+    Find the node at the given (line, column) in the AST.
+    '''
+    last_node = None
+    for node in self.walk():
+      if node.line > line or (node.line == line and node.column > column):
+        if not last_node:
+          last_node = node
+        break
+      last_node = node
+    return last_node
+
   @property
   def tree(self):
     '''
@@ -1078,29 +1091,11 @@ class TypeInferenceEngine(object):
     self.tree = wrap(ast.parse(source))
 
   def complete(self, line, column):
-    node = self.find_node(self.tree, line, column)
+    node = self.tree.locate(line, column)
     if node:
       candidates = list()
       candidates.extend(node.attrs)
       return set(candidates)
-
-  def find_node(self, tree, line, column):
-    ''' Find the node at the given (line, column) in the AST. '''
-    last_node = None
-    for node in tree:
-      if node.line == line:
-        # FIXME This is not correct.
-        node_id = str(getattr(node, 'value', ''))
-        if node.column <= column <= node.column + len(node_id):
-          return node
-        else:
-          return self.find_node(node, line, column)
-      elif node.line > line and last_node and last_node.line <= line:
-        return self.find_node(last_node, line, column)
-      elif node.line <= line and last_node and last_node.line > line:
-        return self.find_node(node, line, column)
-      else:
-        last_node = node
 
 def flatten(nested, flat=None):
   ''' Squash a nested sequence into a flat list of nodes. '''
