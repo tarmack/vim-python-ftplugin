@@ -82,6 +82,17 @@ class Node(object):
       if isinstance(node, Expression):
         yield node
 
+  def walk(self, *types):
+    '''
+    Recursively walk the child nodes of the current node. If {types} is given
+    only nodes of the given types are returned.
+    '''
+    if not types or isinstance(self, types):
+      yield self
+    for node in self:
+      for child in node.walk():
+        yield child
+
   @property
   def tree(self):
     '''
@@ -101,8 +112,7 @@ class Node(object):
     '''
     Find the innermost module/class that contains the current node.
     '''
-    # FIXME Why are function definitions not considered a scope here?!
-    return self._find_parent(ClassDef, Module)
+    return self._find_parent(Module, ClassDef, FunctionDef, Lambda)
 
   @property
   def containing_function(self):
@@ -136,12 +146,14 @@ class Statement(Node):
   '''
   pass
 
-@wraps(ast.Expr)
 class Expression(Node):
+  '''
+  Abstract root class for all expression node types.
+  '''
+  pass
 
-  '''
-  Root class for all expression node types.
-  '''
+@wraps(ast.Expr)
+class Expr(Expression):
 
   def __init__(self, node, parent):
     Node.__init__(self, node, parent)
@@ -182,13 +194,12 @@ class ClassDef(Statement):
 
   @property
   def attrs(self):
-    # TODO Implement.
+    # TODO Verify that this is correct :-P
     results = []
     for node in self:
       if isinstance(node, FunctionDef):
         results.append(node.name)
-      elif isinstance(node, Attribute) and str(node.value) == 'self':
-        results.append(node.attr)
+        # 
       elif isinstance(node, Assign):
         results.extend([t.value for t in node.targets])
     return results
@@ -585,8 +596,7 @@ class Call(Expression):
     name = self.func.value
     scope = self
     while not found and scope.parent:
-      scope = scope.containing_scope
-      for node in scope:
+      for node in scope.containing_scope:
         if isinstance(node, (FunctionDef, ClassDef, Lambda)) and node.name == name:
           found = True
           yield node
@@ -680,8 +690,7 @@ class Name(Expression):
     name = self.value
     scope = self
     while not found and scope.parent:
-      scope = scope.containing_scope
-      for node in scope:
+      for node in scope.containing_scope:
         if isinstance(node, Assign):
           for n in flatten(node.targets):
             if n.value == name:
