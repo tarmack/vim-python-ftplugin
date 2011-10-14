@@ -539,10 +539,11 @@ class Comprehension(Expression):
     return '%s in %s' % (self.target, self.iter)
 
 @wraps(ast.ListComp)
-class ListComprehension(Expression):
+class ListComprehension(LiteralValue):
 
   def __init__(self, node, parent):
     Node.__init__(self, node, parent)
+    self.python_type = list
     self.elt = wrap(node.elt, self)
     self.generators = wrap(node.generators, self)
     # self.ifs = wrap(node.ifs, self)
@@ -555,15 +556,12 @@ class ListComprehension(Expression):
         ', '.join(str(g) for g in self.generators))
 
 @wraps(ast.Tuple)
-class Tuple(Expression):
+class Tuple(LiteralValue):
 
   def __init__(self, node, parent):
     Node.__init__(self, node, parent)
+    self.python_type = tuple
     self.elts = wrap(node.elts, self)
-
-  @property
-  def attrs(self):
-    return dir(tuple)
 
   def __iter__(self):
     return iter(self.elts)
@@ -700,17 +698,24 @@ class Name(Expression):
   def __str__(self):
     return str(self.value)
 
-@wraps(ast.Dict)
-class Dictionary(Expression):
+class LiteralValue(Expression):
 
-  def __init__(self, node, parent):
-    Node.__init__(self, node, parent)
-    self.keys = wrap(node.keys, self)
-    self.values = wrap(node.values, self)
+  @property
+  def type_name(self):
+    return self.python_type.__name__
 
   @property
   def attrs(self):
-    return dir(dict)
+    return dir(self.python_type)
+
+@wraps(ast.Dict)
+class Dictionary(LiteralValue):
+
+  def __init__(self, node, parent):
+    Node.__init__(self, node, parent)
+    self.python_type = dict
+    self.keys = wrap(node.keys, self)
+    self.values = wrap(node.values, self)
 
   def __iter__(self):
     return iter(self.keys + self.values)
@@ -721,15 +726,12 @@ class Dictionary(Expression):
         for i in xrange(len(self.keys)))
 
 @wraps(ast.List)
-class List(Expression):
+class List(LiteralValue):
 
   def __init__(self, node, parent):
     Node.__init__(self, node, parent)
+    self.python_type = list
     self.elts = wrap(node.elts, self)
-
-  @property
-  def attrs(self):
-    return dir(list)
 
   def __iter__(self):
     return iter(self.elts)
@@ -738,15 +740,12 @@ class List(Expression):
     return '[%s]' % ', '.join(str(e) for e in self.elts)
 
 @wraps(ast.Str)
-class Str(Expression):
+class Str(LiteralValue):
 
   def __init__(self, node, parent):
     Node.__init__(self, node, parent)
+    self.python_type = str
     self.value = node.s
-
-  @property
-  def attrs(self):
-    return dir(str)
 
   def __str__(self):
     if DEBUG:
@@ -756,15 +755,12 @@ class Str(Expression):
       return '%r' % self.value
 
 @wraps(ast.Num)
-class Num(Expression):
+class Num(LiteralValue):
 
   def __init__(self, node, parent):
     Node.__init__(self, node, parent)
+    self.python_type = type(node.n)
     self.value = node.n
-
-  @property
-  def attrs(self):
-    return dir(self.value)
 
   def __str__(self):
     return str(self.value)
