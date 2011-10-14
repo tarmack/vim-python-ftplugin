@@ -221,14 +221,19 @@ class ClassDef(Statement):
 
   @property
   def attrs(self):
-    # TODO Verify that this is correct :-P
-    results = []
+    results = set()
     for node in self:
       if isinstance(node, FunctionDef):
-        results.append(node.name)
-        # 
+        # Name of class/instance method.
+        results.add(node.name)
+        # Names of attributes in method that receive assignments.
+        for child in node.walk(Assign):
+          for n in flatten(child.targets):
+            if isinstance(n, Attribute) and n.value.value == 'self':
+              results.add(n.attr)
       elif isinstance(node, Assign):
-        results.extend([t.value for t in node.targets])
+        # Class/instance attribute(s).
+        results.update(t.value for t in node.targets)
     return results
 
   def __iter__(self):
