@@ -985,31 +985,11 @@ class Slice(Expression):
       yield self.step
 
   def __str__(self):
-    # TODO Clean this up
     parts = []
     parts.append(str(self.lower) if self.lower is not None else '')
     parts.append(str(self.upper) if self.upper is not None else '')
     parts.append(str(self.step) if self.step is not None else '')
     return ':'.join(parts)
-
-    if self.lower and self.upper and self.step:
-      return '%s:%s:%s' % (self.lower, self.upper, self.step)
-    elif self.lower and self.upper and not self.step:
-      return '%s:%s' % (self.lower, self.upper)
-    elif self.lower and not self.upper and not self.step:
-      return '%s:' % self.lower
-    elif self.lower and self.step and not self.upper:
-      return '%s::%s' % (self.lower, self.step)
-    elif self.upper and not self.lower and not self.step:
-      return ':%s' % self.upper
-    elif self.step and not self.upper and not self.lower:
-      return '::%s' % self.step
-    elif not (self.lower or self.upper or self.step):
-      return ':'
-    else:
-      log("Failed to pretty print slice! lower=%s, upper=%s, step=%s",
-          self.lower, self.upper, self.step)
-      assert False, "Should not happen?!"
 
 @wraps(ast.ExtSlice)
 class ExtSlice(Expression):
