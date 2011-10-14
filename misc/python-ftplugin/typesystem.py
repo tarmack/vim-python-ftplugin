@@ -17,15 +17,29 @@ DEBUG = True
 type_mapping = {}
 
 def wraps(ast_type):
+  '''
+  Class decorator used to initialize the dictionary mapping
+  between the ast.* classes and our own type hierarchy.
+  '''
   def decorator(cls):
     type_mapping[id(ast_type)] = cls
     return cls
   return decorator
 
 def log(msg, *args):
-  print msg % args
+  '''
+  When the type inference engine is used to suggest completion candidates we
+  use "print" to return the candidates to Vim. This means we cannot write
+  logging messages using "print", instead the messages should go to a file.
+  '''
+  if DEBUG:
+    print msg % args
 
 class Node(object):
+
+  '''
+  Abstract root class for our type hierarchy of AST nodes.
+  '''
 
   def __init__(self, node, parent):
     self.parent = parent
@@ -34,25 +48,45 @@ class Node(object):
 
   @property
   def tree(self):
+    '''
+    Find the root node of the AST.
+    '''
     return self._find_parent()
 
   @property
   def containing_class(self):
+    '''
+    Find the innermost class definition that contains the current node.
+    '''
     return self._find_parent(ClassDef)
 
   @property
   def containing_scope(self):
+    '''
+    Find the innermost module/class that contains the current node.
+    '''
+    # FIXME Why are function definitions not considered a scope here?!
     return self._find_parent(ClassDef, Module)
 
   @property
   def containing_function(self):
+    '''
+    Find the innermost function definition that contains the current node.
+    '''
     return self._find_parent(FunctionDef)
 
   @property
   def containing_module(self):
+    '''
+    Find the module that contains the current node.
+    '''
     return self._find_parent(Module)
 
   def _find_parent(self, *types):
+    '''
+    Internal method that recurses upwards to find parents of the given type(s).
+    If no types are given it recurses all the way up to the root of the AST.
+    '''
     if self.parent is None:
       return self
     elif isinstance(self.parent, types):
@@ -61,10 +95,17 @@ class Node(object):
       return self.parent._find_parent(*types)
 
 class Statement(Node):
+  '''
+  Abstract root class for all statement node types.
+  '''
   pass
 
 @wraps(ast.Expr)
 class Expression(Node):
+
+  '''
+  Root class for all expression node types.
+  '''
 
   def __init__(self, node, parent):
     Node.__init__(self, node, parent)
@@ -944,7 +985,7 @@ class Slice(Expression):
       yield self.step
 
   def __str__(self):
-
+    # TODO Clean this up
     parts = []
     parts.append(str(self.lower) if self.lower is not None else '')
     parts.append(str(self.upper) if self.upper is not None else '')
@@ -1096,6 +1137,7 @@ class TypeInferenceEngine(object):
     last_node = None
     for node in tree:
       if node.line == line:
+        # FIXME This is not correct.
         node_id = str(getattr(node, 'value', ''))
         if node.column <= column <= node.column + len(node_id):
           return node
