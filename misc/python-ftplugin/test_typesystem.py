@@ -28,7 +28,6 @@ class TestTypeInferenceEngine(object):
       self.test_iterator(node)
 
   def test_wrapping(self):
-    return
     ''' Check to see if all objects from the ast tree are getting wrapped.'''
     for node in ast.walk(ast.parse(source)):
       if id(type(node)) in typesystem.type_mapping:
