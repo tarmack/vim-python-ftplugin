@@ -1,4 +1,11 @@
-# TODO Nested yields don't work in Python, are there any nice alternatives?
+# Type inference engine for the Python file type plug-in for Vim.
+# Authors:
+#  - Peter Odding <peter@peterodding.com>
+#  - Bart Kroon <bart@tarmack.eu>
+# Last Change: October 9, 2011
+# URL: https://github.com/tarmack/vim-python-ftplugin
+
+# TODO Nested yields don't work in Python, are there any nice alternatives? (I miss Lua's coroutines)
 # http://groups.google.com/group/comp.lang.python/browse_frm/thread/fcd2709952d23e34?hl=en&lr=&ie=UTF-8&rnum=9&prev=/&frame=on
 
 import ast
@@ -45,14 +52,14 @@ def log(msg, *args):
 
 def complete_inferred_types():
   import vim
-  try:
-    engine = TypeInferenceEngine(vim.eval('source'))
-    line = int(vim.eval('line'))
-    column = int(vim.eval('column'))
-    for candidate in engine.complete(line, column):
-      print candidate
-  except Exception, e:
-    log("Warning: %s", e)
+  engine = TypeInferenceEngine(vim.eval('source'))
+  line = int(vim.eval('line'))
+  column = int(vim.eval('column'))
+  for name, types in engine.complete(line, column).iteritems():
+    fields = [name]
+    for t in types:
+      fields.append(t.__name__)
+    print '|'.join(fields)
 
 class TypeInferenceEngine:
 
@@ -63,10 +70,11 @@ class TypeInferenceEngine:
   def complete(self, line, column):
     node = self.find_node(line, column)
     if node:
-      candidates = list()
-      for type in self.evaluate(node):
-        candidates.extend(dir(type))
-      return sorted(set(candidates), key=lambda c: c.lower().replace('_', '~'))
+      candidates = collections.defaultdict(list)
+      for possible_type in self.evaluate(node):
+        for name in dir(possible_type):
+          candidates[name].append(possible_type)
+      return candidates
 
   def link_parents(self, node):
     ''' Decorate the AST with child -> parent references. '''
@@ -165,6 +173,7 @@ class TypeInferenceEngine:
       yield node
     elif isinstance(node, ast.Call):
       # Function call.
+      # FIXME node.func can be an ast.Attribute!
       name = getattr(node.func, 'id', None)
       if name in BUILTINS:
         # Call to built-in (int(), str(), len(), max(), etc).
@@ -218,7 +227,6 @@ class TypeInferenceEngine:
   def find_function_calls(self, node):
     ''' Yield the function/method calls that might be related to a node. '''
     assert isinstance(node, ast.FunctionDef)
-    # TODO Not yet used!
     for n in ast.walk(self.tree):
       if isinstance(n, ast.Call) and self.call_to_name(n) == node.name:
         yield n
@@ -287,6 +295,10 @@ class TypeInferenceEngine:
 
   def dump(self, node, level=0):
     ''' Print an AST subtree as a multi line indented string. '''
+    if isinstance(node, list):
+        for n in node:
+            self.dump(n, level)
+        return
     if not isinstance(node, ast.Expr):
       print '  ' * level + '(' + type(node).__name__ + ') ' + self.format(node)
       level += 1
@@ -348,6 +360,8 @@ class TypeInferenceEngine:
       return "'%s'" % node.s
     elif isinstance(node, ast.Expr):
       return self.format(node.value)
+    elif isinstance(node, (str, unicode)):
+      return node
     elif isinstance(node, collections.Iterable):
       values = ', '.join(self.format(v) for v in node)
       if isinstance(node, tuple): values = '(%s)' % values
