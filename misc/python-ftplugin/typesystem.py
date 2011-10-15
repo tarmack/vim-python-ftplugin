@@ -4,7 +4,7 @@ Custom type hierarchy wrapping the Python AST
 Authors:
  - Peter Odding <peter@peterodding.com>
  - Bart Kroon <bart@tarmack.eu>
-Last Change: October 14, 2011
+Last Change: October 15, 2011
 URL: https://github.com/tarmack/vim-python-ftplugin
 
 The type inference engine is turning into a royal mess because we get these
@@ -21,10 +21,10 @@ This is a work in progress, not integrated into the Vim plug-in yet.
 # TODO Decorators are missing from the pretty printed output.
 
 import ast
+import sys
+import os
 import numbers
 import collections
-
-DEBUG = True
 
 type_mapping = {}
 
@@ -44,8 +44,7 @@ def log(msg, *args):
   use "print" to return the candidates to Vim. This means we cannot write
   logging messages using "print", instead the messages should go to a file.
   '''
-  if DEBUG:
-    print msg % args
+  print msg % args
 
 class Node(object):
 
@@ -82,15 +81,18 @@ class Node(object):
       if isinstance(node, Expression):
         yield node
 
-  def walk(self, *types):
+  def walk(self, match=(), exclude=(), one_scope=False):
     '''
     Recursively walk the child nodes of the current node. If {types} is given
     only nodes of the given types are returned.
     '''
-    if not types or isinstance(self, types):
+    if one_scope:
+      exclude = (Module, ClassDef, FunctionDef, Lambda)
+    if ((not match or isinstance(self, match)) and # positive type check
+        not (exclude and isinstance(self, exclude))): # negative type check
       yield self
     for node in self:
-      for child in node.walk():
+      for child in node.walk(match, exclude, one_scope):
         yield child
 
   def locate(self, line, column):
@@ -221,6 +223,7 @@ class ClassDef(Statement):
 
   @property
   def attrs(self):
+    # TODO Also check the base classes! And maybe decorators?!
     results = set()
     for node in self:
       if isinstance(node, FunctionDef):
@@ -291,7 +294,7 @@ class Import(Statement):
 
   def __iter__(self):
     return iter(self.names)
-
+    
   def __str__(self):
     return 'import ' + ', '.join(str(n) for n in self.names)
 
@@ -317,6 +320,39 @@ class Alias(Expression):
     Node.__init__(self, node, parent)
     self.name = node.name
     self.asname = node.asname
+
+  @property
+  def module(self):
+    if isinstance(self.parent, Import):
+      module_name = self.name
+    elif isinstance(self.parent, ImportFrom):
+      module_name = self.parent.module
+    else:
+      assert False
+    module_path = module_name.replace('.', '/')
+    for root in sys.path:
+      path = '%s/%s.py' % (root, module_path)
+      if os.path.isfile(path):
+        with open(path) as handle:
+          return parse(handle.read())
+
+  @property
+  def attrs(self):
+    if isinstance(self.parent, Import):
+      module_name = self.name
+    elif isinstance(self.parent, ImportFrom):
+      module_name = self.parent.module
+    else:
+      assert False
+
+    module_path = module_name.replace('.', '/')
+    for root in sys.path:
+      path = '%s/%s.py' % (root, module_path)
+      if os.path.isfile(path):
+        with open(path) as handle:
+          module = parse(handle.read())
+        break    
+    return module.attrs
 
   def __str__(self):
     text = str(self.name)
@@ -693,6 +729,13 @@ class Attribute(Expression):
   @property
   def attrs(self):
     pass
+    
+  @property
+  def path(self):
+    if isinstance(self.value, Name):
+      return self.value.value
+    elif isinstance(self.value, Attribute):
+      return self.value.path + '.' + self.attr
 
   def __iter__(self):
     yield self.value
@@ -710,22 +753,43 @@ class Name(Expression):
   @property
   def attrs(self):
     result = []
-    for node in self.assignments:
-      result.extend(node.attrs)
+    if isinstance(self.parent, Attribute):
+      path = []
+      node = self.parent
+      while isinstance(node, Attribute):
+        path.append(node.attr)
+        node = node.parent
+      
+      for node in self.sources:
+        if isinstance(node, Alias):
+          tree = node.module
+          while path:
+            name = path.pop(0)
+            for n in tree.walk((ClassDef, FunctionDef, Assign), one_scope=True):
+              if getattr(n, 'name', '') == name or name in flatten(n.targets):
+                tree = n
+          # tree is now our final node.
+          result.extend(tree.attrs)
+              
+    else:
+      if self.value == 'self':
+        result.extend(self.containing_class.attrs)
     return result
 
   @property
-  def assignments(self):
-    found = False
-    name = self.value
-    scope = self
-    while not found and scope.parent:
-      for node in scope.containing_scope:
-        if isinstance(node, Assign):
-          for n in flatten(node.targets):
-            if n.value == name:
-              found = True
-              yield node
+  def sources(self):
+    # TODO This doesn't take shadowed variables into account yet! (might get annoying :-)
+    node = self
+    while node.parent:
+      for source in node.containing_scope.walk((Assign, Alias), one_scope=True):
+        if isinstance(source, Assign):
+          for name in flatten(source.targets):
+            if name.value == self.value:
+              yield source
+        elif isinstance(source, Alias):
+          if (source.asname or source.name) == self.value:
+            yield source
+      node = node.parent
 
   def __str__(self):
     return str(self.value)
@@ -770,11 +834,7 @@ class Str(LiteralValue):
     self.value = node.s
 
   def __str__(self):
-    if DEBUG:
-      # Don't dump long strings completely.
-      return '%r' % self.value[:25]
-    else:
-      return '%r' % self.value
+    return '%r' % self.value
 
 @wraps(ast.Num)
 class Num(LiteralValue):
@@ -1089,18 +1149,12 @@ class With(Statement):
       text += ' as %s' % self.optional_vars
     return '%s:\n%s' % (text, indent(self.body))
 
-class TypeInferenceEngine(object):
-
-  def __init__(self, source):
-    assert isinstance(source, basestring)
-    self.tree = wrap(ast.parse(source))
-
-  def complete(self, line, column):
-    node = self.tree.locate(line, column)
-    if node:
-      candidates = list()
-      candidates.extend(node.attrs)
-      return set(candidates)
+def parse(source):
+  '''
+  Parse some Python source code using the ast module and convert the resulting
+  tree into objects of our type hierarchy.
+  '''
+  return wrap(ast.parse(source))
 
 def flatten(nested, flat=None):
   ''' Squash a nested sequence into a flat list of nodes. '''
