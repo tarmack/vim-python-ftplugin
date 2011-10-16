@@ -88,12 +88,14 @@ class Node(object):
     '''
     if one_scope:
       exclude = (Module, ClassDef, FunctionDef, Lambda)
-    if ((not match or isinstance(self, match)) and # positive type check
-        not (exclude and isinstance(self, exclude))): # negative type check
+    if not match or isinstance(self, match):
       yield self
     for node in self:
-      for child in node.walk(match, exclude, one_scope):
-        yield child
+      if exclude and isinstance(node, exclude):
+        yield node
+      else:
+        for child in node.walk(match, exclude, one_scope):
+          yield child
 
   def locate(self, line, column):
     '''
@@ -204,6 +206,18 @@ class Module(Statement):
   def __init__(self, node, parent):
     Node.__init__(self, node, parent)
     self.body = wrap(node.body, self)
+
+  @property
+  def attrs(self):
+    result = []
+    for node in self.walk((ClassDef, FunctionDef, Assign, Alias), one_scope=True):
+      if isinstance(node, (ClassDef, FunctionDef)):
+        result.append(node.name)
+      elif isinstance(node, Assign):
+        result.extend([name.value for name in flatten(node.targets)])
+      elif isinstance(node, Alias):
+        result.append(node.asname or node.name)
+    return result
 
   def __iter__(self):
     return iter(self.body)
@@ -351,7 +365,7 @@ class Alias(Expression):
       if os.path.isfile(path):
         with open(path) as handle:
           module = parse(handle.read())
-        break    
+        break
     return module.attrs
 
   def __str__(self):
@@ -733,9 +747,9 @@ class Attribute(Expression):
   @property
   def path(self):
     if isinstance(self.value, Name):
-      return self.value.value
-    elif isinstance(self.value, Attribute):
-      return self.value.path + '.' + self.attr
+      return [self.attr, self.value.value]
+    while isinstance(self.value, Attribute):
+      return [self.attr] + self.value.path
 
   def __iter__(self):
     yield self.value
@@ -752,29 +766,33 @@ class Name(Expression):
 
   @property
   def attrs(self):
+    if self.value == 'self':
+      return(self.containing_class.attrs)
     result = []
-    if isinstance(self.parent, Attribute):
-      path = []
-      node = self.parent
-      while isinstance(node, Attribute):
-        path.append(node.attr)
-        node = node.parent
-      
-      for node in self.sources:
-        if isinstance(node, Alias):
-          tree = node.module
-          while path:
-            name = path.pop(0)
-            for n in tree.walk((ClassDef, FunctionDef, Assign), one_scope=True):
-              if getattr(n, 'name', '') == name or name in flatten(n.targets):
-                tree = n
-          # tree is now our final node.
-          result.extend(tree.attrs)
-              
-    else:
-      if self.value == 'self':
-        result.extend(self.containing_class.attrs)
+    path = self.path
+    for node in self.sources:
+      if isinstance(node, Alias):
+        node = node.module
+        while path:
+          name = path.pop(0)
+          for n in node.walk((ClassDef, FunctionDef, Assign, Alias), one_scope=True):
+            if isinstance(n, (ClassDef, FunctionDef)) and n.name == name:
+              node = n
+            elif isinstance(n, Assign) and name in flatten(n.targets):
+              node = n
+            elif isinstance(n, Alias) and (n.asname or n.name) == name:
+              node = n
+      result.extend(node.attrs)
     return result
+
+  @property
+  def path(self):
+    path = []
+    node = self
+    while isinstance(node.parent, Attribute):
+      path.append(node.parent.attr)
+      node = node.parent
+    return path
 
   @property
   def sources(self):
@@ -789,7 +807,7 @@ class Name(Expression):
         elif isinstance(source, Alias):
           if (source.asname or source.name) == self.value:
             yield source
-      node = node.parent
+      node = node.containing_scope
 
   def __str__(self):
     return str(self.value)

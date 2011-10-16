@@ -86,14 +86,47 @@ def test_completion_of_user_defined_classes():
   assert 'class_attr' in node2.attrs
   assert '__init__' in node2.attrs
   assert 'dynamic_attr' in node2.attrs
-  
+
 def test_attribute_path():
-  root = parse(dedent('''
-    import os
-    os.path
-  ''').strip())
-  node = root.locate(2, 6)
-#  node = node.parent.parent
+  root = parse('foo.bar.baz.bla.he.ho')
+  node = root.locate(1, 10)
   assert isinstance(node, Name)
-  print node.attrs
-  assert 0
+  print 'Name node.path gave:', node.path
+  assert node.path == ['bar', 'baz', 'bla', 'he', 'ho']
+  node = node.parent.parent.parent.parent
+  print 'Attribute node.path gave:', node.path
+  assert node.path == ['he', 'bla', 'baz', 'bar', 'foo']
+
+def test_import_follow():
+  source = dedent('''
+    import mpd
+    mpd
+    mpd.MPDClient
+
+    import xmllib
+    xmllib.string
+
+    xmllib
+    mpd
+  ''').strip()
+  root = parse(source)
+  node = root.locate(2, 3)
+  assert isinstance(node, Name)
+  print type(node)
+  assert 'MPDClient' in node.attrs
+  root = parse(source)
+  node = root.locate(3, 6)
+  assert isinstance(node, Name)
+  assert 'mpd_version' in node.attrs
+  root = parse(source)
+  node = root.locate(6, 12)
+  assert isinstance(node, Name)
+  assert 'ascii_letters' in node.attrs
+  root = parse(source)
+  node = root.locate(8, 6)
+  assert isinstance(node, Name)
+  assert 'attrfind' in node.attrs
+  root = parse(source)
+  node = root.locate(9, 3)
+  assert isinstance(node, Name)
+  assert 'MPDClient' in node.attrs
