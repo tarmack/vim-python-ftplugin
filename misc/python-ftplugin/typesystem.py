@@ -352,21 +352,7 @@ class Alias(Expression):
 
   @property
   def attrs(self):
-    if isinstance(self.parent, Import):
-      module_name = self.name
-    elif isinstance(self.parent, ImportFrom):
-      module_name = self.parent.module
-    else:
-      assert False
-
-    module_path = module_name.replace('.', '/')
-    for root in sys.path:
-      path = '%s/%s.py' % (root, module_path)
-      if os.path.isfile(path):
-        with open(path) as handle:
-          module = parse(handle.read())
-        break
-    return module.attrs
+    return self.module.attrs
 
   def __str__(self):
     text = str(self.name)
@@ -680,6 +666,8 @@ class Call(Expression):
         if isinstance(node, (FunctionDef, ClassDef, Lambda)) and node.name == name:
           found = True
           yield node
+        else:
+          scope = scope.containing_scope
 
   def __iter__(self):
     items = [self.func] + self.args + self.keywords

@@ -108,6 +108,8 @@ def test_import_follow():
 
     xmllib
     mpd
+    import ast
+    ast.parse
   ''').strip()
   root = parse(source)
   node = root.locate(2, 3)
@@ -130,3 +132,8 @@ def test_import_follow():
   node = root.locate(9, 3)
   assert isinstance(node, Name)
   assert 'MPDClient' in node.attrs
+  node = root.locate(11, 8)
+  print node.attrs
+  assert isinstance(node, Name)
+  # FIXME Check for correct return values here?
+  assert '' in node.attrs
