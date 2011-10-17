@@ -28,13 +28,14 @@ import collections
 
 type_mapping = {}
 
-def wraps(ast_type):
+def wraps(*ast_types):
   '''
   Class decorator used to initialize the dictionary mapping
   between the ast.* classes and our own type hierarchy.
   '''
   def decorator(cls):
-    type_mapping[id(ast_type)] = cls
+    for ast_type in ast_types:
+        type_mapping[id(ast_type)] = cls
     return cls
   return decorator
 
@@ -299,33 +300,23 @@ class FunctionDef(Statement):
         ', '.join(str(a) for a in args),
         indent(self.body))
 
-@wraps(ast.Import)
+@wraps(ast.Import, ast.ImportFrom)
 class Import(Statement):
 
   def __init__(self, node, parent):
     Node.__init__(self, node, parent)
-    self.names = wrap(node.names, self)
-
-  def __iter__(self):
-    return iter(self.names)
-    
-  def __str__(self):
-    return 'import ' + ', '.join(str(n) for n in self.names)
-
-@wraps(ast.ImportFrom)
-class ImportFrom(Statement):
-
-  def __init__(self, node, parent):
-    Node.__init__(self, node, parent)
-    self.module = node.module
+    self.module = getattr(node, 'module', None)
     self.names = wrap(node.names, self)
 
   def __iter__(self):
     return iter(self.names)
 
   def __str__(self):
-    return "from %s import %s" % (self.module,
-        ', '.join(str(n) for n in self.names))
+    text = ''
+    if self.module:
+      text += "from "+self.module+" "
+    text +=  'import ' + ', '.join(str(n) for n in self.names)
+    return text
 
 @wraps(ast.alias)
 class Alias(Expression):
@@ -337,12 +328,7 @@ class Alias(Expression):
 
   @property
   def module(self):
-    if isinstance(self.parent, Import):
-      module_name = self.name
-    elif isinstance(self.parent, ImportFrom):
-      module_name = self.parent.module
-    else:
-      assert False
+    module_name = self.parent.module or self.name
     module_path = module_name.replace('.', '/')
     for root in sys.path:
       path = '%s/%s.py' % (root, module_path)
