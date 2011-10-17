@@ -331,14 +331,31 @@ class Alias(Expression):
     module_name = self.parent.module or self.name
     module_path = module_name.replace('.', '/')
     for root in sys.path:
-      path = '%s/%s.py' % (root, module_path)
+      path = '%s/%s' % (root, module_path)
+      in_package = False
+      if os.path.isdir(path) and '__init__.py' in os.listdir(path):
+        in_package = True
+        path += '/' + self.name
+      path += '.py'
       if os.path.isfile(path):
         with open(path) as handle:
-          return parse(handle.read())
+          module = parse(handle.read())
+          if not in_package and self.parent.module:
+            for node in module.walk((ClassDef, FunctionDef, Assign, Alias), one_scope=True):
+              if isinstance(node, (ClassDef, FunctionDef)) and node.name == self.name:
+                return node
+              elif isinstance(node, Assign) and self.name in flatten(node.targets):
+                return node
+              elif isinstance(node, Alias) and (node.asname or node.name) == self.name:
+                return node
+          else:
+            return module
 
   @property
   def attrs(self):
-    return self.module.attrs
+    module = self.module
+    if module:
+      return module.attrs
 
   def __str__(self):
     text = str(self.name)
@@ -742,7 +759,7 @@ class Name(Expression):
   def attrs(self):
     if self.value == 'self':
       return(self.containing_class.attrs)
-    result = []
+    result = set()
     path = self.path
     for node in self.sources:
       if isinstance(node, Alias):
@@ -756,7 +773,8 @@ class Name(Expression):
               node = n
             elif isinstance(n, Alias) and (n.asname or n.name) == name:
               node = n
-      result.extend(node.attrs)
+      if node:
+        result.update(node.attrs)
     return result
 
   @property
