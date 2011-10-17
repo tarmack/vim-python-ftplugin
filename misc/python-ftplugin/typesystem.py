@@ -98,6 +98,18 @@ class Node(object):
         for child in node.walk(match, exclude, one_scope):
           yield child
 
+  def find_attribute(self, name):
+    '''
+    Find the node that defines the attribute `name`.
+    '''
+    for node in self.walk((ClassDef, FunctionDef, Assign, Alias), one_scope=True):
+      if isinstance(node, (ClassDef, FunctionDef)) and node.name == name:
+        return node
+      elif isinstance(node, Assign) and name in flatten(node.targets):
+        return node
+      elif isinstance(node, Alias) and (node.asname or node.name) == name:
+        return node
+
   def locate(self, line, column):
     '''
     Find the node at the given (line, column) in the AST.
@@ -341,13 +353,7 @@ class Alias(Expression):
         with open(path) as handle:
           module = parse(handle.read())
           if not in_package and self.parent.module:
-            for node in module.walk((ClassDef, FunctionDef, Assign, Alias), one_scope=True):
-              if isinstance(node, (ClassDef, FunctionDef)) and node.name == self.name:
-                return node
-              elif isinstance(node, Assign) and self.name in flatten(node.targets):
-                return node
-              elif isinstance(node, Alias) and (node.asname or node.name) == self.name:
-                return node
+            return module.find_attribute(self.name)
           else:
             return module
 
@@ -766,13 +772,7 @@ class Name(Expression):
         node = node.module
         while path:
           name = path.pop(0)
-          for n in node.walk((ClassDef, FunctionDef, Assign, Alias), one_scope=True):
-            if isinstance(n, (ClassDef, FunctionDef)) and n.name == name:
-              node = n
-            elif isinstance(n, Assign) and name in flatten(n.targets):
-              node = n
-            elif isinstance(n, Alias) and (n.asname or n.name) == name:
-              node = n
+          node = node.find_attribute(name)
       if node:
         result.update(node.attrs)
     return result
