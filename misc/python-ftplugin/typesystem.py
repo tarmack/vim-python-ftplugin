@@ -805,7 +805,8 @@ class Name(Expression):
     while node.parent:
       for source in node.containing_scope.walk((Assign, Alias, ClassDef, FunctionDef), one_scope=True):
         if isinstance(source, Assign):
-          yield source.source(self.value)
+          if self.value in (name.value for name in flatten(source.target)):
+            yield source.source(self.value)
         elif isinstance(source, Alias):
           if (source.asname or source.name) == self.value:
             yield source.module
