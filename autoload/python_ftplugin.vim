@@ -12,12 +12,12 @@ function! s:infer_types(base) " {{{1
   " TODO This is a quick hack that should be refactored and cleaned up!
   if !exists('s:inference_loaded')
     python import vim
-    let scriptfile = s:profile_dir . '/misc/python-ftplugin/inference.py'
+    let scriptfile = s:profile_dir . '/misc/python-ftplugin/typesystem.py'
     execute 'pyfile' fnameescape(scriptfile)
     let s:inference_loaded = 1
   endif
   let line = line('.')
-  let column = col('.')
+  let column = col('.')-1
   let lines = getline(1, '$')
   let cline = lines[line - 1]
   let before = cline[: column-1]
@@ -28,10 +28,11 @@ function! s:infer_types(base) " {{{1
   let source = join(lines, "\n") . "\n"
   try
     redir => listing
-    silent python complete_inferred_types()
+    silent python complete_location(vim.eval('line'), vim.eval('column'), vim.eval('source'))
     redir END
   catch
     redir END
+    call xolox#misc#msg#warn('An error occurred in the python inference code.')
     return []
   endtry
   let candidates = []
@@ -489,10 +490,6 @@ function! s:do_completion_always(chr, line) " {{{1
   if !s:syntax_is_code()
     return 0
   
-  " Don't complete after 'self'.
-  elseif a:line =~ '\<self$'
-    return 0
-
   " Complete module and variable names when at the end of a from XX import YY line.
   elseif match(a:line, '\<from\s\+[A-Za-z0-9_.]\+\.\@<!\s\+import\(\s*[A-Za-z0-9_]\+\s*,\)*\s*[A-Za-z0-9_]*$') >= 0
     " When a space is typed check for comma separator.

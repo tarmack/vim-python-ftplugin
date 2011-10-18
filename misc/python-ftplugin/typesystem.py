@@ -1161,6 +1161,11 @@ class With(Statement):
       text += ' as %s' % self.optional_vars
     return '%s:\n%s' % (text, indent(self.body))
 
+def complete_location(line, column, source):
+  tree = parse(source)
+  node = tree.locate(int(line), int(column))
+  print '\n'.join(node.attrs)
+
 def parse(source):
   '''
   Parse some Python source code using the ast module and convert the resulting
@@ -1241,6 +1246,5 @@ def indent(block):
     block = '\n'.join(str(n) for n in block)
   return '  ' + block.replace('\n', '\n  ')
 
-if __name__ == '__main__':
-  with open(__file__) as handle:
-    print wrap(ast.parse(handle.read()))
+
+# vim: ts=2 sw=2 et
