@@ -105,7 +105,7 @@ class Node(object):
     for node in self.walk((ClassDef, FunctionDef, Assign, Alias), one_scope=True):
       if isinstance(node, (ClassDef, FunctionDef)) and node.name == name:
         return node
-      elif isinstance(node, Assign) and name in flatten(node.targets):
+      elif isinstance(node, Assign) and name in flatten(node.target):
         return node
       elif isinstance(node, Alias) and (node.asname or node.name) == name:
         return node
@@ -227,7 +227,7 @@ class Module(Statement):
       if isinstance(node, (ClassDef, FunctionDef)):
         result.append(node.name)
       elif isinstance(node, Assign):
-        result.extend([name.value for name in flatten(node.targets)])
+        result.extend([name.value for name in flatten(node.target)])
       elif isinstance(node, Alias):
         result.append(node.asname or node.name)
     return result
@@ -258,13 +258,13 @@ class ClassDef(Statement):
         results.add(node.name)
         # Names of attributes in method that receive assignments.
         for child in node.walk(Assign):
-          for n in flatten(child.targets):
+          for n in flatten(child.target):
             if isinstance(n, Attribute) and n.value.value == 'self':
               results.add(n.attr)
       elif isinstance(node, Assign):
         # Class/instance attribute(s).
-        results.update(t.value for t in node.targets)
-    return results
+        results.add(node.target.value)
+    return list(results)
 
   def __iter__(self):
     return iter(self.decorator_list + self.bases + self.body)
@@ -515,7 +515,7 @@ class Assign(Statement):
 
   def __init__(self, node, parent):
     Node.__init__(self, node, parent)
-    self.targets = wrap(node.targets, self)
+    self.target = wrap(node.targets[0], self)
     self.value = wrap(node.value, self)
 
   @property
@@ -523,10 +523,10 @@ class Assign(Statement):
     return self.value.attrs
 
   def __iter__(self):
-    return iter(self.targets + [self.value])
+    return iter([self.target, self.value])
 
   def __str__(self):
-    return '%s = %s' % (', '.join(str(t) for t in self.targets), str(self.value))
+    return '%s = %s' % (', '.join(str(self.target)), str(self.value))
 
 @wraps(ast.AugAssign)
 class AugAssign(Statement):
