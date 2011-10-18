@@ -291,7 +291,7 @@ class FunctionDef(Statement):
   @property
   def attrs(self):
     results = []
-    for obj in self.body:
+    for obj in self.walk():
       if isinstance(obj, Return):
         results.extend(obj.attrs)
     return results
