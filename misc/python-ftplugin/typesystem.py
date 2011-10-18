@@ -518,6 +518,20 @@ class Assign(Statement):
     self.target = wrap(node.targets[0], self)
     self.value = wrap(node.value, self)
 
+  def source(self, name):
+    if isinstance(self.target, Tuple):
+      for i, value in enumerate(self.target):
+        if isinstance(value, Name) and value.value == name:
+          source = self.value.elts[i]
+          if isinstance(source, Name):
+            for node in source.sources:
+              return node
+          else:
+            return source
+    else:
+      return self.value
+
+
   @property
   def attrs(self):
     return self.value.attrs
@@ -768,11 +782,9 @@ class Name(Expression):
     result = set()
     path = self.path
     for node in self.sources:
-      if isinstance(node, Alias):
-        node = node.module
-        while path:
-          name = path.pop(0)
-          node = node.find_attribute(name)
+      while path:
+        name = path.pop(0)
+        node = node.find_attribute(name)
       if node:
         result.update(node.attrs)
     return result
@@ -793,12 +805,10 @@ class Name(Expression):
     while node.parent:
       for source in node.containing_scope.walk((Assign, Alias, ClassDef, FunctionDef), one_scope=True):
         if isinstance(source, Assign):
-          for name in flatten(source.targets):
-            if name.value == self.value:
-              yield source
+          yield source.source(self.value)
         elif isinstance(source, Alias):
           if (source.asname or source.name) == self.value:
-            yield source
+            yield source.module
         elif isinstance(source, (ClassDef, FunctionDef)) and source.name == self.value:
           yield source
       node = node.containing_scope
