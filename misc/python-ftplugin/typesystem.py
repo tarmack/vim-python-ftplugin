@@ -791,7 +791,7 @@ class Name(Expression):
     # TODO This doesn't take shadowed variables into account yet! (might get annoying :-)
     node = self
     while node.parent:
-      for source in node.containing_scope.walk((Assign, Alias), one_scope=True):
+      for source in node.containing_scope.walk((Assign, Alias, ClassDef, FunctionDef), one_scope=True):
         if isinstance(source, Assign):
           for name in flatten(source.targets):
             if name.value == self.value:
@@ -799,6 +799,8 @@ class Name(Expression):
         elif isinstance(source, Alias):
           if (source.asname or source.name) == self.value:
             yield source
+        elif isinstance(source, (ClassDef, FunctionDef)) and source.name == self.value:
+          yield source
       node = node.containing_scope
 
   def __str__(self):
