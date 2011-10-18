@@ -291,9 +291,8 @@ class FunctionDef(Statement):
   @property
   def attrs(self):
     results = []
-    for obj in self.walk():
-      if isinstance(obj, Return):
-        results.extend(obj.attrs)
+    for obj in self.walk(Return, one_scope=True):
+      results.extend(obj.attrs)
     return results
 
   def __iter__(self):
