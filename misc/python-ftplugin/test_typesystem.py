@@ -56,12 +56,35 @@ def test_dictionary_completion():
 def test_follow_assignments():
   root = parse(dedent('''
     module_var = []
+    module_var
+    var1, var2 = 1, ''
     def func():
       module_var
+      var1
+      var2
   ''').strip())
-  node = root.locate(3, 3)
+  node = root.locate(2, 3)
+  assert isinstance(node, Name)
+  print list(node.sources)
+  assert 'append' in node.attrs
+  node = root.locate(5, 3)
   assert isinstance(node, Name)
   assert 'append' in node.attrs
+  node = root.locate(6, 3)
+  assert isinstance(node, Name)
+  assert 'imag' in node.attrs
+  node = root.locate(7, 3)
+  assert isinstance(node, Name)
+  assert 'capitalize' in node.attrs
+
+def est_follow_tuple_unpacking():
+  root = parse(dedent('''
+    var1, var2 = 2, []
+    var1
+    var2
+    ''').strip())
+
+  node1 = root.locate
 
 def test_completion_of_user_defined_classes():
 
@@ -108,32 +131,46 @@ def test_import_follow():
 
     xmllib
     mpd
-    import ast
-    ast.parse
+    import ast as tree
+    tree
+    from logging import handlers
+    handlers
+    from logging.config import DictConfigurator
+    DictConfigurator
   ''').strip()
   root = parse(source)
+  # Test modulelevel completion.
   node = root.locate(2, 3)
   assert isinstance(node, Name)
-  print type(node)
   assert 'MPDClient' in node.attrs
-  root = parse(source)
+  # Test completion from class in module
   node = root.locate(3, 6)
   assert isinstance(node, Name)
   assert 'mpd_version' in node.attrs
-  root = parse(source)
+  # Test recursive module following.
   node = root.locate(6, 12)
   assert isinstance(node, Name)
   assert 'ascii_letters' in node.attrs
-  root = parse(source)
   node = root.locate(8, 6)
   assert isinstance(node, Name)
   assert 'attrfind' in node.attrs
-  root = parse(source)
   node = root.locate(9, 3)
   assert isinstance(node, Name)
   assert 'MPDClient' in node.attrs
+  # Test import as.
   node = root.locate(11, 8)
-  print node.attrs
   assert isinstance(node, Name)
-  # FIXME Check for correct return values here?
-  assert '' in node.attrs
+  assert 'parse' in node.attrs
+  assert 'walk' in node.attrs
+  # Test import from package.
+  node = root.locate(13, 8)
+  assert isinstance(node, Name)
+  assert 'HTTPHandler' in node.attrs
+  assert 'MemoryHandler' in node.attrs
+  # Test import from dotted module name while importing an attribute from the module.
+  node = root.locate(15, 9)
+  assert isinstance(node, Name)
+  print node.attrs
+  assert 'add_filters' in node.attrs
+  # Test following of base classes.
+  assert 'as_tuple' in node.attrs
