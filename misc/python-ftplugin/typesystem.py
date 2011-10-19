@@ -18,7 +18,6 @@ This is a work in progress, not integrated into the Vim plug-in yet.
 '''
 
 # TODO (Ab)use scope awareness to complete variables valid in scope?
-# TODO Decorators are missing from the pretty printed output.
 
 import ast
 import sys
@@ -267,7 +266,10 @@ class ClassDef(Statement):
     return iter(self.decorator_list + self.bases + self.body)
 
   def __str__(self):
-    text = 'class %s' % self.name
+    text = ''
+    for decor in self.decorator_list:
+      text += '@' + str(decor) + '\n'
+    text += 'class %s' % self.name
     if self.bases:
       text += '(%s)' % ', '.join(str(b) for b in self.bases)
     return text + ':\n%s' % indent(self.body)
@@ -296,6 +298,9 @@ class FunctionDef(Statement):
     return iter(self.decorator_list + self.args + self.defaults + self.body)
 
   def __str__(self):
+    text = ''
+    for decor in self.decorator_list:
+      text += '@' + str(decor) + '\n'
     args = []
     args.extend(self.args)
     args.extend(self.defaults)
@@ -303,10 +308,11 @@ class FunctionDef(Statement):
       args.append('*' + str(self.vararg))
     if self.kwarg:
       args.append('**' + str(self.kwarg))
-    return 'def %s(%s):\n%s' % (
+    text += 'def %s(%s):\n%s' % (
         self.name,
         ', '.join(str(a) for a in args),
         indent(self.body))
+    return text
 
 @wraps(ast.Import, ast.ImportFrom)
 class Import(Statement):
