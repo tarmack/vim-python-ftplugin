@@ -101,7 +101,7 @@ class Node(object):
     for node in self.walk((ClassDef, FunctionDef, Assign, Alias), one_scope=True):
       if isinstance(node, (ClassDef, FunctionDef)) and node.name == name:
         return node
-      elif isinstance(node, Assign) and name in flatten(node.target):
+      elif isinstance(node, Assign) and name in (n.value for n in flatten(node.target)):
         return node
       elif isinstance(node, Alias) and (node.asname or node.name) == name:
         return node
@@ -529,18 +529,22 @@ class Assign(Statement):
     self.target = wrap(node.targets[0], self)
     self.value = wrap(node.value, self)
 
-  def source(self, name):
+  def sources(self, name):
     if isinstance(self.target, Tuple):
       for i, value in enumerate(self.target):
         if isinstance(value, Name) and value.value == name:
           source = self.value.elts[i]
-          if isinstance(source, Name):
-            for node in source.sources:
-              return node
-          else:
-            return source
+          break
     else:
-      return self.value
+      source = self.value
+    if isinstance(source, Name):
+      for node in source.sources:
+        yield node
+    elif isinstance(source, Call):
+      for func in source.definitions:
+        yield func
+    else:
+      yield source
 
 
   @property
@@ -788,8 +792,6 @@ class Name(Expression):
 
   @property
   def attrs(self):
-    if self.value == 'self':
-      return self.containing_class.attrs
     result = set()
     path = self.path
     for node in self.sources:
@@ -812,18 +814,22 @@ class Name(Expression):
   @property
   def sources(self):
     # TODO This doesn't take shadowed variables into account yet! (might get annoying :-)
-    node = self
-    while node.parent:
-      for source in node.containing_scope.walk((Assign, Alias, ClassDef, FunctionDef), one_scope=True):
-        if isinstance(source, Assign):
-          if self.value in (name.value for name in flatten(source.target)):
-            yield source.source(self.value)
-        elif isinstance(source, Alias):
-          if (source.asname or source.name) == self.value:
-            yield source.target
-        elif isinstance(source, (ClassDef, FunctionDef)) and source.name == self.value:
-          yield source
-      node = node.containing_scope
+    if self.value == 'self':
+      yield self.containing_class
+    else:
+      node = self
+      while node.parent:
+        for source in node.containing_scope.walk((Assign, Alias, ClassDef, FunctionDef), one_scope=True):
+          if isinstance(source, Assign):
+            if self.value in (name.value for name in flatten(source.target)):
+              for value in source.sources(self.value):
+                yield value
+          elif isinstance(source, Alias):
+            if (source.asname or source.name) == self.value:
+              yield source.target
+          elif isinstance(source, (ClassDef, FunctionDef)) and source.name == self.value:
+            yield source
+        node = node.containing_scope
 
   def __str__(self):
     return str(self.value)
