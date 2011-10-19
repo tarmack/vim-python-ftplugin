@@ -2,7 +2,7 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart Kroon <bart@tarmack.eu>
-" Last Change: October 9, 2011
+" Last Change: October 19, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
 let g:python_ftplugin#version = '0.6.4'
@@ -20,10 +20,14 @@ function! s:infer_types(base) " {{{1
   let column = col('.')-1
   let lines = getline(1, '$')
   let cline = lines[line - 1]
-  let before = cline[: column-1]
+  if match(cline, '\S') >= 0
+    let indent = strpart(cline, 0, match(cline, '\S'))
+  else
+    let indent = cline
+  endif
   let after = cline[column :]
   let temp = substitute(a:base, '\.[^.]*$', '', '')
-  let lines[line - 1] = before . temp . after
+  let lines[line - 1] = indent . temp
   " XXX Without this ast.parse() will fail with a syntax error :-\
   let source = join(lines, "\n") . "\n"
   try
