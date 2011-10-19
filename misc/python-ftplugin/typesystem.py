@@ -241,19 +241,23 @@ class ClassDef(Statement):
     Node.__init__(self, node, parent)
     self.decorator_list = wrap(node.decorator_list, self)
     self.name = node.name
-    self.bases = wrap(node.bases)
+    self.bases = wrap(node.bases, self)
     self.body = wrap(node.body, self)
 
   @property
   def attrs(self):
     # TODO Also check the base classes! And maybe decorators?!
     results = set()
-    for node in self:
+    for name in self.bases:
+      for base in name.sources:
+        results.update(base.attrs)
+    for node in self.body:
       if isinstance(node, FunctionDef):
         # Name of class/instance method.
         results.add(node.name)
         # Names of attributes in method that receive assignments.
-        for child in node.walk(Assign):
+        for child in node.walk(Assign, one_scope=True):
+          assert isinstance(child, Assign)
           for n in flatten(child.target):
             if isinstance(n, Attribute) and n.value.value == 'self':
               results.add(n.attr)
@@ -785,7 +789,7 @@ class Name(Expression):
   @property
   def attrs(self):
     if self.value == 'self':
-      return(self.containing_class.attrs)
+      return self.containing_class.attrs
     result = set()
     path = self.path
     for node in self.sources:
@@ -794,7 +798,7 @@ class Name(Expression):
         node = node.find_attribute(name)
       if node:
         result.update(node.attrs)
-    return result
+    return list(result)
 
   @property
   def path(self):
