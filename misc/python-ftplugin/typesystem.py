@@ -341,7 +341,9 @@ class Alias(Expression):
     self.asname = node.asname
 
   @property
-  def module(self):
+  def target(self):
+    if hasattr(self, '_target'):
+      return self._target
     module_name = self.parent.module or self.name
     module_path = module_name.replace('.', '/')
     for root in sys.path:
@@ -354,16 +356,19 @@ class Alias(Expression):
       if os.path.isfile(path):
         with open(path) as handle:
           module = parse(handle.read())
-          if not in_package and self.parent.module:
-            return module.find_attribute(self.name)
-          else:
-            return module
+        if not in_package and self.parent.module:
+          self._target = module.find_attribute(self.name)
+        else:
+          self._target = module
+        return self._target
+    # No valid target found.
+    self._target = None
+    return self._target
 
   @property
   def attrs(self):
-    module = self.module
-    if module:
-      return module.attrs
+    if self.target:
+      return self.target.attrs
 
   def __str__(self):
     text = str(self.name)
@@ -811,7 +816,7 @@ class Name(Expression):
             yield source.source(self.value)
         elif isinstance(source, Alias):
           if (source.asname or source.name) == self.value:
-            yield source.module
+            yield source.target
         elif isinstance(source, (ClassDef, FunctionDef)) and source.name == self.value:
           yield source
       node = node.containing_scope
