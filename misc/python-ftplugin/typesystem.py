@@ -87,16 +87,13 @@ class Node(object):
     Recursively walk the child nodes of the current node. If {types} is given
     only nodes of the given types are returned.
     '''
-    if one_scope:
-      exclude = (Module, ClassDef, FunctionDef, Lambda)
-    if not match or isinstance(self, match):
-      yield self
     for node in self:
-      if exclude and isinstance(node, exclude):
+      if (not match or isinstance(node, match)) and (not exclude or not isinstance(node, exclude)):
         yield node
-      else:
+      if not (one_scope and isinstance(node, (Module, ClassDef, FunctionDef, Lambda))):
         for child in node.walk(match, exclude, one_scope):
-          yield child
+          if (not match or isinstance(child, match)) and (not exclude or not isinstance(child, exclude)):
+            yield child
 
   def find_attribute(self, name):
     '''
