@@ -78,12 +78,12 @@ if xolox#misc#option#get('python_syntax_fold', 1)
   endif
   " Match function and class definitions. 
   syntax region  pythonFunctionFold
-        \ start="^\(\z(\s*\)\)\%(@.*\n\1\)\@<!\%(def\|class\)\s\+\_.\{-}:"
+        \ start="^\(\z(\s*\)\)\%(@.*\%(\w\|)\)\n\1\)\@<!\%(def\|class\)\s\+\_.\{-}:"
         \ skip="^\%(\s*\n\|\s*#\|\z1\s\+\)"
         \ end="^\ze\%(\%(\z1\s\+\)\@!\|\%$\)" fold transparent
   syntax region  pythonDecoratedFunctionFold
-        \ start="^\(\z(\s*\)\)\%(@.*\n\1\)\+\z(\%(def\|class\)\s\+\_.\{-}:.*$\)"
-        \ skip="^\%(\s*\n\|\s*#\|\z1\%(\s\+\|\z2\)\)"
+        \ start="^\(\z(\s*\)\)\%(@.*\%(\w\|)\)\n\1\)\@<!\%(@.*\n\1\)\+\z(\%(def\|class\)\s\+\_.\{-}:.*$\)"
+        \ skip="^\%(\s*\n\|\s*#\|\z1\%(\s\+\|\z2\|@\_.*\z2\)\)"
         \ end="^\ze\%(\%(\z1\s\+\)\@!\|\%$\)" fold transparent 
   " Match comments that span more than one line.
   syntax region  pythonCommentFold start="^\z(\s*\)#\%(!\|\s*-\*-\)\@!.*$" 

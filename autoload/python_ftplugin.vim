@@ -2,10 +2,10 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart Kroon <bart@tarmack.eu>
-" Last Change: October 19, 2011
+" Last Change: October 21, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin#version = '0.6.4'
+let g:python_ftplugin#version = '0.6.6'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 function! s:infer_types(base) " {{{1
@@ -87,11 +87,14 @@ function! python_ftplugin#fold_text() " {{{1
       call add(text, substitute(line, ':$', '', ''))
       " Fall through.
       let lnum += 1
+    elseif line =~ '\S.*\("""\|''\{3}\)'
+      " Multiline string. Include the code before the string.
+      call add(text, matchstr(line, '\s*\zs.*\%("""\|''\{3}\)\ze'))
     endif
     if xolox#misc#option#get('python_docstring_in_foldtext', 1)
       " Show joined lines from docstring in fold text (can be slow).
       let haystack = join(getline(lnum, v:foldend))
-      let docstr = matchstr(haystack, '^\_s*\("""\|''\{3}\)\zs\_.\{-}\ze\1')
+      let docstr = matchstr(haystack, '\("""\|''\{3}\)\zs\_.\{-}\ze\1')
       if docstr =~ '\S'
         if lnum > v:foldstart
           call add(text, '-')
