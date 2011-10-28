@@ -3,7 +3,7 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart Kroon <bart@tarmack.eu>
-" Last Change: October 9, 2011
+" Last Change: October 28, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
 if exists('b:did_ftplugin')
@@ -11,6 +11,10 @@ if exists('b:did_ftplugin')
 else
   let b:did_ftplugin = 1
 endif
+
+" Enable line continuation.
+let s:cpo_save = &cpo
+set cpo&vim
 
 " Buffer local options. {{{1
 
@@ -107,6 +111,8 @@ call map(s:undo_ftplugin, "'execute ' . string(v:val)")
 let b:undo_ftplugin = join(s:undo_ftplugin, ' | ')
 unlet s:undo_ftplugin
 
-let g:loaded_python_ftplugin = 1
+" Restore "cpoptions".
+let &cpo = s:cpo_save
+unlet s:cpo_save
 
 " vim: ts=2 sw=2 et
