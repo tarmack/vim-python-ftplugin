@@ -3,7 +3,7 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart Kroon <bart@tarmack.eu>
-" Last Change: October 28, 2011
+" Last Change: November 9, 2011
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
 if exists('b:did_ftplugin')
@@ -54,12 +54,16 @@ if has('gui_win32') && !exists('b:browsefilter')
   call add(s:undo_ftplugin, 'unlet! b:browsefilter')
 endif
 
-" Don't screw up folds when inserting text that might affect them, until
-" leaving insert mode. This also helps keep completion quick.
-" Foldmethod is local to the window. Protect against screwing up folding when
-" switching between windows.
-autocmd InsertEnter * if !exists('w:last_fdm') | let w:last_fdm=&foldmethod | setlocal foldmethod=manual | endif
-autocmd InsertLeave,WinLeave * if exists('w:last_fdm') | let &l:foldmethod=w:last_fdm | unlet w:last_fdm | endif
+" Syntax based folding is known to slow Vim down significantly. The following
+" code implements a workaround that doesn't exactly fix the issue but at least
+" makes it less obnoxious. See also:
+" http://vim.wikia.com/wiki/Keep_folds_closed_while_inserting_text
+augroup PluginFileTypePython
+  autocmd! InsertEnter <buffer> if !exists('w:last_fdm') | let w:last_fdm = &fdm | setl fdm=manual | endif
+  call add(s:undo_ftplugin, 'autocmd! PluginFileTypePython InsertEnter <buffer>')
+  autocmd! InsertLeave,WinLeave <buffer> if exists('w:last_fdm') | let &l:fdm = w:last_fdm | unlet w:last_fdm | endif
+  call add(s:undo_ftplugin, 'autocmd! PluginFileTypePython InsertLeave,WinLeave <buffer>')
+augroup END
 
 " Mappings to jump between classes and functions. {{{1
 nnoremap <silent> <buffer> ]] :call python_ftplugin#jump('/^\(class\\|def\)')<cr>
