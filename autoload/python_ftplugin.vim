@@ -16,20 +16,27 @@ function! s:infer_types(base) " {{{1
     execute 'pyfile' fnameescape(scriptfile)
     let s:inference_loaded = 1
   endif
+  let base = substitute(a:base, '\.[^.]*$', '', '')
   let line = line('.')
   let column = col('.')-1
-  let lines = getline(1, '$')
-  let cline = lines[line - 1]
-  if match(cline, '\S') >= 0
-    let indent = strpart(cline, 0, match(cline, '\S'))
+  let cline = getline(line)
+  if cline =~ 'from\s\+[A-Za-z0-9_.]\+\s\+import'
+    call xolox#misc#msg#info("using from XXX import YYY code path")
+    let import = split(cline)[1]
+    let source = "import " . import . "\n" . import . "\n"
+    let line = 2
+    let column = 1
   else
-    let indent = cline
+    let lines = getline(1, '$')
+    if match(cline, '\S') >= 0
+      let indent = strpart(cline, 0, match(cline, '\S'))
+    else
+      let indent = cline
+    endif
+    let lines[line - 1] = indent . base
+    " XXX Without this ast.parse() will fail with a syntax error :-\
+    let source = join(lines, "\n") . "\n"
   endif
-  let after = cline[column :]
-  let temp = substitute(a:base, '\.[^.]*$', '', '')
-  let lines[line - 1] = indent . temp
-  " XXX Without this ast.parse() will fail with a syntax error :-\
-  let source = join(lines, "\n") . "\n"
   try
     redir => listing
     silent python complete_location(vim.eval('line'), vim.eval('column'), vim.eval('source'))
@@ -40,10 +47,14 @@ function! s:infer_types(base) " {{{1
     return []
   endtry
   let candidates = []
-  let pattern = '^' . xolox#misc#escape#pattern(a:base)
+  let pattern = '^' . xolox#misc#escape#pattern(base)
   for line in split(listing, '\n')
     let fields = split(line, '|')
-    let word = temp . '.' . remove(fields, 0)
+    if !empty(base)
+      let word = base . '.' . remove(fields, 0)
+    else
+      let word = remove(fields, 0)
+    endif
     if word =~ pattern
       call add(candidates, {'word': word, 'menu': '(' . join(sort(fields), ', ') . ')'})
     endif
