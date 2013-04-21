@@ -82,7 +82,7 @@ If you have questions, bug reports, suggestions, etc. you can contact Bart at <b
 ## License
 
 This software is licensed under the [MIT license](http://en.wikipedia.org/wiki/MIT_License).  
-© 2011 Peter Odding &lt;<peter@peterodding.com>&gt; and Bart Kroon &lt;<bart@tarmack.eu>&gt;.
+© 2013 Peter Odding &lt;<peter@peterodding.com>&gt; and Bart Kroon &lt;<bart@tarmack.eu>&gt;.
 
 
 [ast]: http://docs.python.org/library/ast.html
