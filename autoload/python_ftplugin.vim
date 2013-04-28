@@ -2,10 +2,10 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart Kroon <bart@tarmack.eu>
-" Last Change: April 21, 2013
+" Last Change: April 28, 2013
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin#version = '0.6.11'
+let g:python_ftplugin#version = '0.6.12'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
 call xolox#misc#compat#check('python-ftplugin', 1)
