@@ -157,8 +157,8 @@ https://github.com/tarmack/vim-python-ftplugin.
                                                              *ft_python-license*
 License ~
 
-This software is licensed under the MIT license [4]. Copyright 2013 Peter
-Odding <peter@peterodding.com> and Bart Kroon <bart@tarmack.eu>.
+This software is licensed under the MIT license [4]. ÂŠ 2013 Peter Odding
+<peter@peterodding.com> and Bart Kroon <bart@tarmack.eu>.
 
 ===============================================================================
                                                           *ft_python-references*
