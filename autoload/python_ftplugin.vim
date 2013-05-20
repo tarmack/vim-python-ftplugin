@@ -5,10 +5,10 @@
 " Last Change: May 20, 2013
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
-let g:python_ftplugin#version = '0.6.15'
+let g:python_ftplugin#version = '0.6.16'
 let s:profile_dir = expand('<sfile>:p:h:h')
 
-call xolox#misc#compat#check('python.vim', g:python_ftplugin#version, 7)
+call xolox#misc#compat#check('python.vim', g:python_ftplugin#version, 9)
 
 function! s:infer_types(base) " {{{1
   " TODO This is a quick hack that should be refactored and cleaned up!
