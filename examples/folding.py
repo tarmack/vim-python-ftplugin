@@ -48,3 +48,7 @@ class Test:
         docstring for baz()
         '''
         pass
+
+    def gr():
+        pass
+

@@ -86,7 +86,7 @@ if xolox#misc#option#get('python_syntax_fold', 1)
   endif
   " Match function and class definitions. 
   syntax region  pythonFunctionFold
-        \ start="^\(\z(\s*\)\)\%(@.*\n\1\)\@<!\%(@.*\n\1\)*\z(\%(def\|class\)\s\+\_.\{-}:\)"
+        \ start="^\(\z(\s*\)\)\%(@.*\n\1\)\@<!\%(@.*\n\1\)*\z(\%(def\|class\)\s\+.\{-}$\)"
         \ skip="^\%(\z1\%(\s\+\|\z2\|@\_.*\z2\)\|\s*\n\|\s*#\)"
         \ end="^\ze\%(\%(\z1\s\+\)\@!\|\%$\)" fold transparent 
   " Match comments that span more than one line.
