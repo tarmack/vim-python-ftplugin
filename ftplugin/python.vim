@@ -3,7 +3,7 @@
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
 "  - Bart Kroon <bart@tarmack.eu>
-" Last Change: November 9, 2011
+" Last Change: May 20, 2013
 " URL: https://github.com/tarmack/vim-python-ftplugin
 
 if exists('b:did_ftplugin')
