@@ -12,6 +12,8 @@ support should be able to generate good text folds
 
 foo = 0
 
+def inline(): return 3
+
 def test2():
     pass
     pass
@@ -30,12 +32,18 @@ class Test:
         ''' docstring for foo() '''
         pass
 
+    @foo(bar='foo') # foo needs foo as bar.
+    @property
     def bar():
         '''
         docstring for bar()
         '''
         pass
-    def baz():
+
+    @property
+    def baz(bar='',
+            baz=':',
+            foo=None):
         '''
         docstring for baz()
         '''
