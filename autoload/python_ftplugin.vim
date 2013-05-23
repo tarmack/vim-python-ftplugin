@@ -1,3 +1,9 @@
+" This Vim script was modified by a Python script that I use to manage the
+" inclusion of miscellaneous functions in the plug-ins that I publish to Vim
+" Online and GitHub. Please don't edit this file, instead make your changes on
+" the 'dev' branch of the git repository (thanks!). This file was generated on
+" May 23, 2013 at 22:18.
+
 " Vim autoload script
 " Authors:
 "  - Peter Odding <peter@peterodding.com>
@@ -35,7 +41,7 @@ function! s:infer_types(base) " {{{1
     return []
   endtry
   let candidates = []
-  let pattern = '^' . xolox#misc#escape#pattern(a:base)
+  let pattern = '^' . python_ftplugin#misc#escape#pattern(a:base)
   for line in split(listing, '\n')
     let fields = split(line, '|')
     let word = temp . '.' . remove(fields, 0)
@@ -64,9 +70,9 @@ function! python_ftplugin#fold_text() " {{{1
       if !empty(text)
         let text[-1] = text[-1] . ","
       endif
-      if xolox#misc#option#get('python_decorators_in_foldtext', 1)
+      if python_ftplugin#misc#option#get('python_decorators_in_foldtext', 1)
         let decorator = matchstr(line, '@[A-Za-z0-9_]*')
-        let decorator_labels = xolox#misc#option#get('python_decorator_labels', {})
+        let decorator_labels = python_ftplugin#misc#option#get('python_decorator_labels', {})
         if has_key(decorator_labels, decorator[1:])
           let decorator = '@' . decorator_labels[decorator[1:]]
         endif
@@ -78,7 +84,7 @@ function! python_ftplugin#fold_text() " {{{1
     
     if line =~ '^\s*\(def\|class\)\>'
       " Class or function body.
-      let line = xolox#misc#str#trim(line)
+      let line = python_ftplugin#misc#str#trim(line)
       call add(text, substitute(line, ':$', '', ''))
       " Fall through.
       let lnum += 1
@@ -86,7 +92,7 @@ function! python_ftplugin#fold_text() " {{{1
       " Multiline string. Include the code before the string.
       call add(text, matchstr(line, '\s*\zs.*\%("""\|''\{3}\)\ze'))
     endif
-    if xolox#misc#option#get('python_docstring_in_foldtext', 1)
+    if python_ftplugin#misc#option#get('python_docstring_in_foldtext', 1)
       " Show joined lines from docstring in fold text (can be slow).
       let haystack = join(getline(lnum, v:foldend))
       let docstr = matchstr(haystack, '\("""\|''\{3}\)\zs\_.\{-}\ze\1')
@@ -100,7 +106,7 @@ function! python_ftplugin#fold_text() " {{{1
       " Show first actual line of docstring.
       for line in getline(lnum, lnum + 5)
         if line =~ '\w'
-          call add(text, xolox#misc#str#trim(line))
+          call add(text, python_ftplugin#misc#str#trim(line))
           break
         endif
       endfor
@@ -112,10 +118,10 @@ function! python_ftplugin#fold_text() " {{{1
 endfunction
 
 function! python_ftplugin#syntax_check() " {{{1
-  if xolox#misc#option#get('python_check_syntax', 1)
+  if python_ftplugin#misc#option#get('python_check_syntax', 1)
     " Enable the user to override python_makeprg and python_error_format.
-    let makeprg = xolox#misc#option#get('python_makeprg', '')
-    let error_format = xolox#misc#option#get('python_error_format', '')
+    let makeprg = python_ftplugin#misc#option#get('python_makeprg', '')
+    let error_format = python_ftplugin#misc#option#get('python_error_format', '')
     " Use reasonable defaults for python_makeprg and python_error_format.
     if makeprg == '' || error_format == ''
       " Use pyflakes when available, fall-back to the Python compiler.
@@ -138,7 +144,7 @@ function! python_ftplugin#syntax_check() " {{{1
       else
         let g:python_check_syntax = 0
       endif
-      call xolox#misc#msg#warn(message, g:python_ftplugin#version)
+      call python_ftplugin#misc#msg#warn(message, g:python_ftplugin#version)
     else
       let mp_save = &makeprg
       let efm_save = &errorformat
@@ -146,7 +152,7 @@ function! python_ftplugin#syntax_check() " {{{1
         let &makeprg = makeprg
         let &errorformat = error_format
         let winnr = winnr()
-        call xolox#misc#msg#info('python.vim %s: Checking Python script syntax ..', g:python_ftplugin#version)
+        call python_ftplugin#misc#msg#info('python.vim %s: Checking Python script syntax ..', g:python_ftplugin#version)
         execute 'silent make!'
         cwindow
         if winnr() != winnr
@@ -180,14 +186,14 @@ function! python_ftplugin#include_expr(fname) " {{{1
   redir => output
   silent python find_module_path(vim.eval('a:fname'))
   redir END
-  return xolox#misc#str#trim(output)
+  return python_ftplugin#misc#str#trim(output)
 endfunction
 
 function! python_ftplugin#omni_complete(findstart, base) " {{{1
   if a:findstart
     return s:find_start('variable')
   else
-    let starttime = xolox#misc#timer#start()
+    let starttime = python_ftplugin#misc#timer#start()
     let candidates = []
     if s:do_variable_completion(a:base[-1:])
       let base = a:base
@@ -204,7 +210,7 @@ function! python_ftplugin#omni_complete(findstart, base) " {{{1
         silent python complete_variables(vim.eval('base'))
       redir END
       let completes = split(listing, '\n')
-      let pattern = '^' . xolox#misc#escape#pattern(base)
+      let pattern = '^' . python_ftplugin#misc#escape#pattern(base)
       call filter(completes, 'v:val =~# pattern')
       if exists('from') && !empty(from)
         call map(completes, 'v:val[len(from) + 1 :]')
@@ -220,7 +226,7 @@ function! python_ftplugin#omni_complete(findstart, base) " {{{1
         redir END
         let completes = split(listing, '\n')
         for module in keys(imports)
-          let pattern = '^' . xolox#misc#escape#pattern(imports[module]) . '\.'
+          let pattern = '^' . python_ftplugin#misc#escape#pattern(imports[module]) . '\.'
           let index = len(imports[module])
           for compl in completes
             if compl =~# pattern
@@ -237,7 +243,7 @@ function! python_ftplugin#omni_complete(findstart, base) " {{{1
       call extend(candidates, s:add_modules(a:base, imports))
     endif
     " Filter the completion candidates according to the given base.
-    let pattern = '^' . xolox#misc#escape#pattern(a:base)
+    let pattern = '^' . python_ftplugin#misc#escape#pattern(a:base)
     call filter(candidates, 'v:val =~# pattern')
     let pattern = pattern . '\.'
     call filter(candidates, 'v:val !~ pattern')
@@ -249,7 +255,7 @@ function! python_ftplugin#omni_complete(findstart, base) " {{{1
     " Sort the completion candidates.
     call sort(candidates, 's:friendly_sort')
     " Provide some feedback in case of :verbose.
-    call xolox#misc#timer#stop("python.vim %s: Found %s completion candidates in %s.", g:python_ftplugin#version, len(candidates), starttime)
+    call python_ftplugin#misc#timer#stop("python.vim %s: Found %s completion candidates in %s.", g:python_ftplugin#version, len(candidates), starttime)
     return candidates
   endif
 endfunction
@@ -269,7 +275,7 @@ function! s:add_modules(base, imports) " {{{1
     for name in keys(a:imports)
       let module = a:imports[name] . '.' . base
       let completes = s:find_modules(module)
-      let pattern = '^' . xolox#misc#escape#pattern(a:imports[name]) . '\.'
+      let pattern = '^' . python_ftplugin#misc#escape#pattern(a:imports[name]) . '\.'
       let index = len(a:imports[name])
       for compl in completes
         if compl =~# pattern
@@ -282,7 +288,7 @@ function! s:add_modules(base, imports) " {{{1
 endfunction
 
 function! s:find_modules(base) " {{{1
-  let start_load = xolox#misc#timer#start()
+  let start_load = python_ftplugin#misc#timer#start()
   let todo = []
   let fromstr = s:get_base_module()
   let from = split(fromstr, '\.')
@@ -295,7 +301,7 @@ function! s:find_modules(base) " {{{1
     if len(todo) == 1
       " Include items from the containing node that start with the last item.
       let keys = keys(node)
-      let pattern = '^' . xolox#misc#escape#pattern(todo[0])
+      let pattern = '^' . python_ftplugin#misc#escape#pattern(todo[0])
       call filter(keys, "v:val =~# pattern")
       for key in keys
         call add(items, join(done + [key], '.'))
@@ -317,7 +323,7 @@ function! s:find_modules(base) " {{{1
   for key in keys
     call add(items, join(done + [key], '.'))
   endfor
-  call xolox#misc#timer#stop("python.vim %s: Found %i module names in %s.", g:python_ftplugin#version, len(items), start_load)
+  call python_ftplugin#misc#timer#stop("python.vim %s: Found %i module names in %s.", g:python_ftplugin#version, len(items), start_load)
   return items
 endfunction
 
@@ -336,7 +342,7 @@ function! s:get_imports(base) " {{{1
   let imports = {}
   let cursor_save = getpos('.')
   call cursor(1, 1)
-  let base = xolox#misc#escape#pattern(split(a:base, '\.')[0])
+  let base = python_ftplugin#misc#escape#pattern(split(a:base, '\.')[0])
   while search('\<import\>', 'cW', 0, 500) && s:syntax_is_code()
     " Get the full import line and remove any trailing comments.
     let line_no = line('.')
@@ -389,19 +395,19 @@ function! python_ftplugin#auto_complete(chr) " {{{1
         \ && search('\<from\s\+[A-Za-z0-9._]\+\s*\%#\s*$', 'bcn', line('.'))
         \ && s:syntax_is_code()
     " Fill 'import' in for the user when a space is entered after the from part.
-    if xolox#misc#option#get('python_auto_complete_variables', 0)
+    if python_ftplugin#misc#option#get('python_auto_complete_variables', 0)
       let type = 'variable'
       let result = "import \<C-x>\<C-o>\<C-n>"
-    elseif xolox#misc#option#get('python_auto_complete_modules', 1)
+    elseif python_ftplugin#misc#option#get('python_auto_complete_modules', 1)
       let type = 'module'
       let result = "import \<C-x>\<C-o>\<C-n>"
     endif
-  elseif xolox#misc#option#get('python_auto_complete_variables', 0)
+  elseif python_ftplugin#misc#option#get('python_auto_complete_variables', 0)
         \ && s:do_variable_completion(a:chr)
     " Automatic completion of canonical variable names.
     let type = 'variable'
     let result = "\<C-x>\<C-o>\<C-n>"
-  elseif xolox#misc#option#get('python_auto_complete_modules', 1)
+  elseif python_ftplugin#misc#option#get('python_auto_complete_modules', 1)
         \ && s:do_module_completion(a:chr)
     " Automatic completion of canonical module names,
     " only when variable name completion is not available.
@@ -409,7 +415,7 @@ function! python_ftplugin#auto_complete(chr) " {{{1
     let result = "\<C-x>\<C-o>\<C-n>"
   endif
   if exists('result')
-    call xolox#misc#msg#debug("python.vim %s: %s %s completion.", g:python_ftplugin#version, pumvisible() ? "Continuing" : "Starting", type)
+    call python_ftplugin#misc#msg#debug("python.vim %s: %s %s completion.", g:python_ftplugin#version, pumvisible() ? "Continuing" : "Starting", type)
     " Make sure Vim opens the menu but doesn't enter the first match.
     let b:python_cot_save = &completeopt
     set cot+=menu cot+=menuone cot+=longest
@@ -531,7 +537,7 @@ endfunction
 function! s:find_start(type) " {{{1
   let prefix = getline('.')[0 : col('.')-2]
   let ident = matchstr(prefix, '[A-Za-z0-9_.]\+$')
-  call xolox#misc#msg#debug("python.vim %s: Completing %s `%s'.", g:python_ftplugin#version, a:type, ident)
+  call python_ftplugin#misc#msg#debug("python.vim %s: Completing %s `%s'.", g:python_ftplugin#version, a:type, ident)
   return col('.') - len(ident) - 1
 endfunction
 

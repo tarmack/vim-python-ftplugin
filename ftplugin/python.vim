@@ -1,3 +1,9 @@
+" This Vim script was modified by a Python script that I use to manage the
+" inclusion of miscellaneous functions in the plug-ins that I publish to Vim
+" Online and GitHub. Please don't edit this file, instead make your changes on
+" the 'dev' branch of the git repository (thanks!). This file was generated on
+" May 23, 2013 at 22:18.
+
 " Vim file type plug-in
 " Language: Python
 " Authors:
@@ -76,11 +82,11 @@ call add(s:undo_ftplugin, 'nunmap <buffer> ]m')
 call add(s:undo_ftplugin, 'nunmap <buffer> [m')
 
 " Enable syntax folding. {{{1
-if xolox#misc#option#get('python_syntax_fold', 1)
+if python_ftplugin#misc#option#get('python_syntax_fold', 1)
   setlocal foldmethod=syntax
   call add(s:undo_ftplugin, 'setlocal foldmethod<')
   " Match docstrings that span more than one line.
-  if xolox#misc#option#get('python_fold_docstrings', 1)
+  if python_ftplugin#misc#option#get('python_fold_docstrings', 1)
     syn region  pythonFoldedString start=+[Bb]\=[Rr]\=[Uu]\=\z("""\|'''\)+ end=+.*\z1+ fold transparent contained
           \ containedin=pythonString,pythonUniString,pythonUniRawString,pythonRawString
   endif
